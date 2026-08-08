@@ -1,0 +1,365 @@
+backend/pyproject.tomlCódigo123456789101112131415161718192021222324252627282930[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "planejadocs-backend"
+version = "0.1.0"
+description = "Backend PlanejaDocs - Conversor PDF para Markdown"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.0",
+    "pymupdf4llm>=0.0.18",
+    "pdfplumber>=0.11",
+    "pandas>=2.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+ocr = ["marker-pdf>=1.0"]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.4"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]backend/app/schemas.pyEspelha exatamente os schemas do openapi.yaml.Código12345678910111213141516171819202122232425262728293031"""Schemas Pydantic - espelham o contrato OpenAPI."""
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
+
+class HealthResponse(BaseModel):
+    status: Literal["ok", "degraded"]
+    version: str
+    timestamp: str
+
+class DocumentMetadata(BaseModel):
+    source: str
+    type: Literal["native", "scanned"]
+    pages: int
+    duration_ms: int | None = None
+    ocr: str | None = None
+
+class ConvertResponse(BaseModel):
+    markdown: str
+    tables: list[dict[str, Any]] | None = None
+    metadata: DocumentMetadata
+
+class TablesResponse(BaseModel):
+    tables: list[dict[str, Any]]
+    format: Literal["json", "csv", "excel"]
+    count: int
+
+class ErrorResponse(BaseModel):
+    code: str
+    message: str
+    details: dict[str, Any] | None = Nonebackend/app/errors.pyCódigo123456789101112131415161718192021222324252627"""Códigos de erro padronizados (spec convert.md)."""
+from fastapi import HTTPException, status
+
+class PDF2MDError(Exception):
+    """Erro base do PlanejaDocs."""
+
+    def __init__(self, code: str, message: str, http_status: int = 500, details: dict | None = None):
+        self.code = code
+        self.message = message
+        self.http_status = http_status
+        self.details = details
+        super().__init__(message)
+
+def corrupt_file() -> PDF2MDError:
+    return PDF2MDError("PDF2MD_001", "Arquivo corrompido ou ilegível.", 400)
+
+def file_too_large() -> PDF2MDError:
+    return PDF2MDError("PDF2MD_002", "Arquivo excede 50 MB.", 413)
+
+def too_many_pages() -> PDF2MDError:
+    return PDF2MDError("PDF2MD_003", "Arquivo excede 500 páginas.", 400)
+
+def ocr_failed() -> PDF2MDError:
+    return PDF2MDError("PDF2MD_004", "OCR falhou. Verifique a dependência marker-pdf.", 500)
+
+def not_a_pdf() -> PDF2MDError:
+    return PDF2MDError("PDF2MD_005", "Formato não suportado. Envie um PDF.", 400)backend/app/core/detector.pyCódigo123456789101112131415161718"""Detecta se o PDF é nativo ou escaneado."""
+import fitz
+
+def is_native_pdf(path: str, min_chars_per_page: int = 50) -> bool:
+    doc = fitz.open(path)
+    total_chars = sum(len(page.get_text().strip()) for page in doc)
+    pages = max(len(doc), 1)
+    doc.close()
+    return (total_chars / pages) > min_chars_per_page
+
+def detect_document_type(path: str, min_chars_per_page: int = 50) -> str:
+    return "native" if is_native_pdf(path, min_chars_per_page) else "scanned"
+
+def count_pages(path: str) -> int:
+    doc = fitz.open(path)
+    n = len(doc)
+    doc.close()
+    return nbackend/app/core/extractor.pyCódigo12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849"""Extração principal com PyMuPDF4LLM."""
+import time
+from pathlib import Path
+
+import pymupdf4llm
+
+from ..errors import not_a_pdf, too_many_pages
+from .detector import count_pages, detect_document_type
+
+MAX_PAGES = 500
+
+def convert_to_markdown(path: str, write_images: bool = False) -> dict:
+    """Converte PDF para markdown. Retorna dict com markdown, tipo e metadados."""
+    path = Path(path)
+
+    if path.suffix.lower() != ".pdf":
+        raise not_a_pdf()
+
+    pages = count_pages(str(path))
+    if pages > MAX_PAGES:
+        raise too_many_pages()
+
+    start = time.time()
+    doc_type = detect_document_type(str(path))
+
+    if doc_type == "scanned":
+        from .ocr_engine import ocr_scanned_pdf
+        md = ocr_scanned_pdf(str(path))
+        ocr_engine = "marker"
+    else:
+        md = pymupdf4llm.to_markdown(
+            str(path),
+            write_images=write_images,
+            page_chunks=False,
+        )
+        ocr_engine = None
+
+    duration_ms = int((time.time() - start) * 1000)
+
+    return {
+        "markdown": md,
+        "metadata": {
+            "source": path.name,
+            "type": doc_type,
+            "pages": pages,
+            "duration_ms": duration_ms,
+            "ocr": ocr_engine,
+        },
+    }backend/app/core/table_extractor.pyCódigo12345678910111213141516171819202122232425262728293031323334"""Extração de tabelas com pdfplumber."""
+import json
+from pathlib import Path
+
+import pdfplumber
+
+def extract_tables(path: str) -> list[dict]:
+    """Extrai todas as tabelas do PDF como lista de dicts."""
+    result: list[dict] = []
+    with pdfplumber.open(path) as pdf:
+        for i, page in enumerate(pdf.pages):
+            tables = page.extract_tables()
+            for j, table in enumerate(tables):
+                if table:
+                    result.append({
+                        "page": i + 1,
+                        "table_index": j,
+                        "rows": table,
+                    })
+    return result
+
+def save_json(tables: list[dict], out_path: str) -> None:
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(tables, f, ensure_ascii=False, indent=2)
+
+def save_excel(tables: list[dict], out_path: str) -> None:
+    import pandas as pd
+
+    with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+        for i, t in enumerate(tables):
+            rows = t["rows"]
+            if rows:
+                df = pd.DataFrame(rows[1:], columns=rows[0])
+                df.to_excel(writer, sheet_name=f"tabela_{i + 1}", index=False)backend/app/core/ocr_engine.pyCódigo12345678910111213141516"""OCR para PDFs escaneados (Marker/Surya). Requer GPU para escala."""
+from ..errors import ocr_failed
+
+def ocr_scanned_pdf(path: str) -> str:
+    try:
+        from marker.convert import convert_pdf
+        from marker.models import load_all_models
+    except ImportError as e:
+        raise ocr_failed() from e
+
+    try:
+        models = load_all_models()
+        text, _, _ = convert_pdf(path, models)
+        return text
+    except Exception as e:
+        raise ocr_failed() from ebackend/app/core/output.pyCódigo12345678910111213141516"""Monta a resposta final a partir do resultado da extração."""
+from .extractor import convert_to_markdown
+from .table_extractor import extract_tables
+
+def build_convert_response(path: str, extract_tables_flag: bool = True) -> dict:
+    result = convert_to_markdown(path)
+
+    tables = None
+    if extract_tables_flag:
+        tables = extract_tables(path)
+
+    return {
+        "markdown": result["markdown"],
+        "tables": tables,
+        "metadata": result["metadata"],
+    }backend/app/main.pyCódigo1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071727374757677787980818283848586878889909192939495"""FastAPI app - implementa o contrato OpenAPI."""
+import time
+from datetime import datetime, timezone
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import Response
+
+from .core.output import build_convert_response
+from .core.table_extractor import extract_tables, save_excel, save_json
+from .errors import PDF2MDError, corrupt_file, file_too_large
+from .schemas import (
+    ConvertResponse,
+    ErrorResponse,
+    HealthResponse,
+    TablesResponse,
+)
+
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+
+app = FastAPI(
+    title="PlanejaDocs API",
+    version="0.1.0",
+    description="Conversor de PDFs da Secretaria Municipal de Saúde para Markdown.",
+)
+
+@app.exception_handler(PDF2MDError)
+async def pdf2md_error_handler(request, exc: PDF2MDError):
+    return Response(
+        content=ErrorResponse(code=exc.code, message=exc.message, details=exc.details).model_dump_json(),
+        status_code=exc.http_status,
+        media_type="application/json",
+    )
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    return HealthResponse(
+        status="ok",
+        version="0.1.0",
+        timestamp=datetime.now(timezone.utc).isoformat(),
+    )
+
+@app.post("/convert", response_model=ConvertResponse)
+async def convert_pdf(
+    file: UploadFile = File(...),
+    extract_tables_flag: bool = True,
+    output_format: str = "markdown",
+):
+    """Converte um PDF para Markdown."""
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise corrupt_file()
+
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise file_too_large()
+
+    tmp_path = f"/tmp/{int(time.time())}_{file.filename}"
+    with open(tmp_path, "wb") as f:
+        f.write(content)
+
+    try:
+        result = build_convert_response(tmp_path, extract_tables_flag)
+    except PDF2MDError:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    finally:
+        import os
+        os.remove(tmp_path)
+
+    return ConvertResponse(**result)
+
+@app.post("/convert/tables", response_model=TablesResponse)
+async def convert_tables(
+    file: UploadFile = File(...),
+    format: str = "json",
+):
+    """Extrai apenas as tabelas de um PDF."""
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise corrupt_file()
+
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise file_too_large()
+
+    tmp_path = f"/tmp/{int(time.time())}_{file.filename}"
+    with open(tmp_path, "wb") as f:
+        f.write(content)
+
+    try:
+        tables = extract_tables(tmp_path)
+    finally:
+        import os
+        os.remove(tmp_path)
+
+    return TablesResponse(tables=tables, format=format, count=len(tables))
+Nota: o parâmetro format no endpoint /convert/tables recebe json/csv/excel. Para CSV/Excel, o backend deve retornar o arquivo binário (não JSON) — o esqueleto acima retorna JSON com os dados; a geração de arquivo CSV/Excel pode ser adicionada como endpoint separado ou via query param com Response binária. Deixei a estrutura pronta para evoluir.
+backend/tests/conftest.pyCódigo1234567891011121314151617181920212223242526272829"""Fixtures para testes da API."""
+import fitz
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+@pytest.fixture
+def native_pdf(tmp_path):
+    path = tmp_path / "native.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "Relatório de gestão " * 20)
+    doc.save(path)
+    doc.close()
+    return path
+
+@pytest.fixture
+def scanned_pdf(tmp_path):
+    path = tmp_path / "scanned.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(path)
+    doc.close()
+    return pathbackend/tests/test_api.pyCódigo12345678910111213141516171819202122232425"""Testes dos endpoints - cobrem os critérios de aceite da spec."""
+
+def test_health(client):
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ok"
+
+def test_convert_native_pdf(client, native_pdf):
+    with open(native_pdf, "rb") as f:
+        resp = client.post("/convert", files={"file": ("native.pdf", f, "application/pdf")})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["metadata"]["type"] == "native"
+    assert "markdown" in data
+
+def test_convert_invalid_format(client):
+    resp = client.post("/convert", files={"file": ("doc.txt", b"not a pdf", "text/plain")})
+    assert resp.status_code == 400
+    assert resp.json()["code"] == "PDF2MD_001"
+
+def test_convert_tables(client, native_pdf):
+    with open(native_pdf, "rb") as f:
+        resp = client.post("/convert/tables", files={"file": ("native.pdf", f, "application/pdf")})
+    assert resp.status_code == 200
+    assert "tables" in resp.json().env.exampleCódigo1234PDF2MD_MAX_PAGES=500
+PDF2MD_MAX_FILE_SIZE_MB=50
+PDF2MD_WRITE_IMAGES=false
+PDF2MD_OCR_ENGINE=marker

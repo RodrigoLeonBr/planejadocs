@@ -1,0 +1,191 @@
+openapi: 3.0.3
+info:
+  title: PlanejaDocs API
+  version: 0.1.0
+  description: >-
+    Conversor de PDFs da Secretaria Municipal de Saúde para Markdown
+    estruturado, com extração de tabelas e OCR para escalas escaneadas.
+servers:
+  - url: http://localhost:8000
+    description: Ambiente local
+
+paths:
+  /health:
+    get:
+      summary: Verifica se o serviço está ativo
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Serviço saudável
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /convert:
+    post:
+      summary: Converte um PDF para Markdown
+      operationId: convertPdf
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Arquivo PDF (máx. 50 MB)
+                extract_tables:
+                  type: boolean
+                  default: true
+                  description: Extrair tabelas com pdfplumber
+                output_format:
+                  type: string
+                  enum: [markdown, json]
+                  default: markdown
+                  description: Formato da resposta
+      responses:
+        "200":
+          description: Conversão concluída
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertResponse"
+        "400":
+          description: Arquivo inválido ou não suportado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Arquivo excede 50 MB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Erro interno (ex: OCR falhou)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /convert/tables:
+    post:
+      summary: Extrai apenas as tabelas de um PDF
+      operationId: extractTables
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                format:
+                  type: string
+                  enum: [json, csv, excel]
+                  default: json
+      responses:
+        "200":
+          description: Tabelas extraídas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TablesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        version:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    ConvertResponse:
+      type: object
+      required:
+        - markdown
+        - metadata
+      properties:
+        markdown:
+          type: string
+          description: Conteúdo convertido em Markdown
+        tables:
+          type: array
+          items:
+            type: object
+          description: Tabelas extraídas (se solicitado)
+        metadata:
+          $ref: "#/components/schemas/DocumentMetadata"
+
+    DocumentMetadata:
+      type: object
+      properties:
+        source:
+          type: string
+          description: Nome do arquivo original
+        type:
+          type: string
+          enum: [native, scanned]
+        pages:
+          type: integer
+        duration_ms:
+          type: integer
+        ocr:
+          type: string
+          description: Motor OCR usado (se escaneado)
+
+    TablesResponse:
+      type: object
+      properties:
+        tables:
+          type: array
+          items:
+            type: object
+        format:
+          type: string
+          enum: [json, csv, excel]
+        count:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Código padronizado (ex: PDF2MD_001)
+        message:
+          type: string
+        details:
+          type: object
+          description: Detalhes adicionais (opcional)
+
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+security: []

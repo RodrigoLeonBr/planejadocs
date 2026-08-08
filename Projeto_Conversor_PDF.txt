@@ -1,0 +1,647 @@
+📦 Projeto: pdf2md — Conversor PDF → Markdown ReutilizávelVisão GeralServiço Python modular que converte PDFs em Markdown estruturado, com detecção automática de tipo (nativo vs. escaneado), extração de tabelas e 3 formas de uso (biblioteca, CLI, API REST). Projetado para ser componente de outros sistemas e para desenvolvimento assistido por IA (Cursor/Claude Code).Stack: Python 3.10+ · pymupdf4llm · pdfplumber · pydantic · fastapi (opcional) · marker-pdf (OCR opcional)Estrutura de DiretóriosCódigopdf2md/
+├── pyproject.toml
+├── README.md
+├── .env.example
+├── .gitignore
+├── src/
+│   └── pdf2md/
+│       ├── __init__.py          # API pública
+│       ├── config.py            # Configuração via env vars
+│       ├── detector.py          # Nativo vs escaneado
+│       ├── extractor.py         # PyMuPDF4LLM → markdown
+│       ├── table_extractor.py   # pdfplumber → tabelas
+│       ├── ocr_engine.py        # Marker p/ escaneados (opcional)
+│       ├── output.py            # Formata markdown + JSON + frontmatter
+│       ├── cli.py               # Interface CLI
+│       └── api.py               # FastAPI (opcional)
+├── tests/
+│   ├── conftest.py              # Fixtures + PDFs de teste
+│   ├── test_detector.py
+│   ├── test_extractor.py
+│   ├── test_table_extractor.py
+│   └── test_output.py
+└── examples/
+    ├── convert_batch.py
+    └── obsidian_export.pyArquivos Principaispyproject.tomlCódigo12345678910111213141516171819202122232425262728[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdf2md"
+version = "0.1.0"
+description = "Conversor PDF para Markdown reutilizável"
+requires-python = ">=3.10"
+dependencies = [
+    "pymupdf4llm>=0.0.18",
+    "pdfplumber>=0.11",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
+ocr = ["marker-pdf>=1.0"]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.4"]
+
+[project.scripts]
+pdf2md = "pdf2md.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]src/pdf2md/__init__.pyCódigo123456789101112"""API pública do pdf2md."""
+from .detector import detect_document_type, is_native_pdf
+from .extractor import convert_pdf, convert_to_obsidian
+from .output import ConversionResult
+
+__all__ = [
+    "convert_pdf",
+    "convert_to_obsidian",
+    "detect_document_type",
+    "is_native_pdf",
+    "ConversionResult",
+]src/pdf2md/config.pyCódigo1234567891011121314"""Configuração central via variáveis de ambiente."""
+import os
+from dataclasses import dataclass, field
+
+@dataclass
+class Settings:
+    ocr_engine: str = field(default_factory=lambda: os.getenv("PDF2MD_OCR_ENGINE", "marker"))
+    max_pages: int = field(default_factory=lambda: int(os.getenv("PDF2MD_MAX_PAGES", "500")))
+    output_dir: str = field(default_factory=lambda: os.getenv("PDF2MD_OUTPUT_DIR", "./output"))
+    write_images: bool = field(default_factory=lambda: os.getenv("PDF2MD_WRITE_IMAGES", "true").lower() == "true")
+    page_chunks: bool = field(default_factory=lambda: os.getenv("PDF2MD_PAGE_CHUNKS", "true").lower() == "true")
+    min_chars_per_page: int = field(default_factory=lambda: int(os.getenv("PDF2MD_MIN_CHARS", "50")))
+
+settings = Settings()src/pdf2md/detector.pyCódigo1234567891011121314"""Detecta se o PDF é nativo (texto selecionável) ou escaneado (imagem)."""
+import fitz  # PyMuPDF
+
+def is_native_pdf(path: str, min_chars_per_page: int = 50) -> bool:
+    """True se o PDF tem texto selecionável suficiente (não é só imagem)."""
+    doc = fitz.open(path)
+    total_chars = sum(len(page.get_text().strip()) for page in doc)
+    pages = max(len(doc), 1)
+    doc.close()
+    return (total_chars / pages) > min_chars_per_page
+
+def detect_document_type(path: str, min_chars_per_page: int = 50) -> str:
+    """Retorna 'native' ou 'scanned'."""
+    return "native" if is_native_pdf(path, min_chars_per_page) else "scanned"src/pdf2md/extractor.pyCódigo12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970"""Extração principal de markdown com PyMuPDF4LLM."""
+from pathlib import Path
+
+import pymupdf4llm
+
+from .config import settings
+from .detector import detect_document_type
+from .output import ConversionResult
+
+def convert_pdf(path: str, extract_tables: bool = True) -> ConversionResult:
+    """Converte PDF para markdown. Usa OCR se o PDF for escaneado."""
+    path = Path(path)
+    doc_type = detect_document_type(str(path))
+
+    if doc_type == "scanned":
+        from .ocr_engine import ocr_scanned_pdf
+        return ocr_scanned_pdf(path)
+
+    md = pymupdf4llm.to_markdown(
+        str(path),
+        write_images=settings.write_images,
+        page_chunks=settings.page_chunks,
+    )
+
+    tables = None
+    if extract_tables:
+        from .table_extractor import extract_tables
+        tables = extract_tables(str(path))
+
+    return ConversionResult(
+        markdown=md,
+        tables=tables,
+        metadata={
+            "source": path.name,
+            "type": doc_type,
+            "pages": _count_pages(path),
+        },
+    )
+
+def convert_to_obsidian(path: str, vault_path: str) -> Path:
+    """Converte e salva como .md com frontmatter YAML no vault Obsidian."""
+    result = convert_pdf(path)
+    vault = Path(vault_path)
+    vault.mkdir(parents=True, exist_ok=True)
+
+    out = vault / f"{Path(path).stem}.md"
+    out.write_text(_with_frontmatter(result), encoding="utf-8")
+    return out
+
+def _count_pages(path: Path) -> int:
+    import fitz
+    doc = fitz.open(path)
+    n = len(doc)
+    doc.close()
+    return n
+
+def _with_frontmatter(result: ConversionResult) -> str:
+    meta = result.metadata
+    fm = (
+        "---\n"
+        f"title: {meta['source']}\n"
+        f"type: {meta['type']}\n"
+        f"pages: {meta['pages']}\n"
+        "tags: [pdf, importado]\n"
+        "---\n\n"
+    )
+    body = result.markdown if isinstance(result.markdown, str) else "\n\n".join(
+        c["text"] if isinstance(c, dict) else str(c) for c in result.markdown
+    )
+    return fm + bodysrc/pdf2md/table_extractor.pyCódigo12345678910111213141516171819202122"""Extração de tabelas com pdfplumber (fallback para tabelas complexas)."""
+import json
+from typing import Any
+
+import pdfplumber
+
+def extract_tables(path: str, pages: list[int] | None = None) -> dict[str, Any]:
+    """Extrai tabelas de cada página como listas de listas."""
+    result: dict[str, Any] = {}
+    with pdfplumber.open(path) as pdf:
+        target = pages if pages else range(len(pdf.pages))
+        for i in target:
+            tables = pdf.pages[i].extract_tables()
+            if tables:
+                result[f"page_{i + 1}"] = tables
+    return result
+
+def tables_to_json(path: str, out_path: str) -> None:
+    """Salva tabelas extraídas em JSON."""
+    tables = extract_tables(path)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(tables, f, ensure_ascii=False, indent=2)src/pdf2md/output.pyCódigo123456789"""Modelos de saída."""
+from dataclasses import dataclass, field
+from typing import Any
+
+@dataclass
+class ConversionResult:
+    markdown: str | list[Any]
+    tables: dict[str, Any] | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)src/pdf2md/ocr_engine.pyCódigo12345678910111213141516171819202122"""OCR para PDFs escaneados. Usa Marker (Surya). Requer GPU para escala."""
+from pathlib import Path
+
+from .output import ConversionResult
+
+def ocr_scanned_pdf(path: Path) -> ConversionResult:
+    """Converte PDF escaneado via Marker. Lento em CPU (~5-10s/página)."""
+    try:
+        from marker.convert import convert_pdf
+        from marker.models import load_all_models
+    except ImportError as e:
+        raise RuntimeError(
+            "OCR requer 'marker-pdf'. Instale com: pip install 'pdf2md[ocr]'"
+        ) from e
+
+    models = load_all_models()
+    text, images, metadata = convert_pdf(str(path), models)
+
+    return ConversionResult(
+        markdown=text,
+        metadata={"source": path.name, "type": "scanned", "ocr": "marker"},
+    )src/pdf2md/cli.pyCódigo12345678910111213141516171819202122232425262728293031323334353637383940"""Interface de linha de comando."""
+import argparse
+import sys
+from pathlib import Path
+
+from .extractor import convert_pdf, convert_to_obsidian
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="pdf2md", description="PDF → Markdown")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    conv = sub.add_parser("convert", help="Converte PDF para markdown")
+    conv.add_argument("input", help="Caminho do PDF")
+    conv.add_argument("-o", "--output", help="Arquivo .md de saída")
+    conv.add_argument("--no-tables", action="store_true", help="Pula extração de tabelas")
+
+    obs = sub.add_parser("obsidian", help="Exporta para vault Obsidian")
+    obs.add_argument("input", help="Caminho do PDF")
+    obs.add_argument("--vault", required=True, help="Caminho do vault Obsidian")
+
+    args = parser.parse_args(argv)
+
+    if args.command == "convert":
+        result = convert_pdf(args.input, extract_tables=not args.no_tables)
+        if args.output:
+            Path(args.output).write_text(
+                result.markdown if isinstance(result.markdown, str) else str(result.markdown),
+                encoding="utf-8",
+            )
+            print(f"✓ {args.output}")
+        else:
+            print(result.markdown)
+    elif args.command == "obsidian":
+        out = convert_to_obsidian(args.input, args.vault)
+        print(f"✓ {out}")
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())src/pdf2md/api.pyCódigo1234567891011121314151617181920212223"""API REST (opcional). Instalar: pip install 'pdf2md[api]'."""
+from fastapi import FastAPI, File, UploadFile
+from pydantic import BaseModel
+
+from .extractor import convert_pdf
+
+app = FastAPI(title="pdf2md", version="0.1.0")
+
+class ConvertResponse(BaseModel):
+    markdown: str
+    tables: dict | None = None
+    metadata: dict
+
+@app.post("/convert", response_model=ConvertResponse)
+async def convert(file: UploadFile = File(...)):
+    tmp = f"/tmp/{file.filename}"
+    with open(tmp, "wb") as f:
+        f.write(await file.read())
+    result = convert_pdf(tmp)
+    md = result.markdown if isinstance(result.markdown, str) else str(result.markdown)
+    return ConvertResponse(
+        markdown=md, tables=result.tables, metadata=result.metadata
+    )tests/test_detector.pyCódigo1234567891011"""Testes do detector de tipo."""
+from pdf2md.detector import detect_document_type, is_native_pdf
+
+def test_is_native_pdf_true(native_pdf):
+    assert is_native_pdf(str(native_pdf)) is True
+
+def test_detect_native(native_pdf):
+    assert detect_document_type(str(native_pdf)) == "native"
+
+def test_detect_scanned(scanned_pdf):
+    assert detect_document_type(str(scanned_pdf)) == "scanned"tests/conftest.pyCódigo123456789101112131415161718192021222324"""Fixtures compartilhadas."""
+import fitz
+import pytest
+
+@pytest.fixture
+def native_pdf(tmp_path):
+    """Gera um PDF nativo com texto."""
+    path = tmp_path / "native.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "Relatório de gestão " * 20)
+    doc.save(path)
+    doc.close()
+    return path
+
+@pytest.fixture
+def scanned_pdf(tmp_path):
+    """Gera um PDF escaneado (página em branco, sem texto)."""
+    path = tmp_path / "scanned.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(path)
+    doc.close()
+    return path.env.exampleCódigo123456PDF2MD_OCR_ENGINE=marker
+PDF2MD_MAX_PAGES=500
+PDF2MD_OUTPUT_DIR=./output
+PDF2MD_WRITE_IMAGES=true
+PDF2MD_PAGE_CHUNKS=true
+PDF2MD_MIN_CHARS=50.gitignoreCódigo__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+.env
+output/🗂️ Obsidian como Apoio (sem configuração prévia)O Obsidian funciona com pastas de arquivos .md — não precisa de instalação especial para o fluxo funcionar.Fluxo mínimo recomendado:
+Crie um vault apontando para uma pasta vazia (ex: ~/Obsidian/Vault).
+Use o comando do CLI para exportar:
+   pdf2md obsidian relatorio.pdf --vault ~/Obsidian/Vault
+Cada PDF vira um .md com frontmatter YAML (título, tipo, páginas, tags) — o Obsidian lê isso nativamente como metadados pesquisáveis.
+Para organizar por tipo, crie subpastas no vault e ajuste o --vault (ex: --vault ~/Obsidian/Vault/Contratos).
+Use tags no frontmatter para filtrar por categoria (contrato, prestação-de-contas, escala).
+Dica para IA/Cursor: mantenha o output_dir fora do vault para não poluir a indexação. Exporte só o que for definitivo.
+
+----
+📦 Projeto: pdf2md — Conversor PDF → Markdown ReutilizávelVisão GeralServiço Python modular que converte PDFs em Markdown estruturado, com detecção automática de tipo (nativo vs. escaneado), extração de tabelas e 3 formas de uso (biblioteca, CLI, API REST). Projetado para ser componente de outros sistemas e para desenvolvimento assistido por IA (Cursor/Claude Code).Stack: Python 3.10+ · pymupdf4llm · pdfplumber · pydantic · fastapi (opcional) · marker-pdf (OCR opcional)Estrutura de DiretóriosCódigopdf2md/
+├── pyproject.toml
+├── README.md
+├── .env.example
+├── .gitignore
+├── src/
+│   └── pdf2md/
+│       ├── __init__.py          # API pública
+│       ├── config.py            # Configuração via env vars
+│       ├── detector.py          # Nativo vs escaneado
+│       ├── extractor.py         # PyMuPDF4LLM → markdown
+│       ├── table_extractor.py   # pdfplumber → tabelas
+│       ├── ocr_engine.py        # Marker p/ escaneados (opcional)
+│       ├── output.py            # Formata markdown + JSON + frontmatter
+│       ├── cli.py               # Interface CLI
+│       └── api.py               # FastAPI (opcional)
+├── tests/
+│   ├── conftest.py              # Fixtures + PDFs de teste
+│   ├── test_detector.py
+│   ├── test_extractor.py
+│   ├── test_table_extractor.py
+│   └── test_output.py
+└── examples/
+    ├── convert_batch.py
+    └── obsidian_export.pyArquivos Principaispyproject.tomlCódigo12345678910111213141516171819202122232425262728[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdf2md"
+version = "0.1.0"
+description = "Conversor PDF para Markdown reutilizável"
+requires-python = ">=3.10"
+dependencies = [
+    "pymupdf4llm>=0.0.18",
+    "pdfplumber>=0.11",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
+ocr = ["marker-pdf>=1.0"]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.4"]
+
+[project.scripts]
+pdf2md = "pdf2md.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]src/pdf2md/__init__.pyCódigo123456789101112"""API pública do pdf2md."""
+from .detector import detect_document_type, is_native_pdf
+from .extractor import convert_pdf, convert_to_obsidian
+from .output import ConversionResult
+
+__all__ = [
+    "convert_pdf",
+    "convert_to_obsidian",
+    "detect_document_type",
+    "is_native_pdf",
+    "ConversionResult",
+]src/pdf2md/config.pyCódigo1234567891011121314"""Configuração central via variáveis de ambiente."""
+import os
+from dataclasses import dataclass, field
+
+@dataclass
+class Settings:
+    ocr_engine: str = field(default_factory=lambda: os.getenv("PDF2MD_OCR_ENGINE", "marker"))
+    max_pages: int = field(default_factory=lambda: int(os.getenv("PDF2MD_MAX_PAGES", "500")))
+    output_dir: str = field(default_factory=lambda: os.getenv("PDF2MD_OUTPUT_DIR", "./output"))
+    write_images: bool = field(default_factory=lambda: os.getenv("PDF2MD_WRITE_IMAGES", "true").lower() == "true")
+    page_chunks: bool = field(default_factory=lambda: os.getenv("PDF2MD_PAGE_CHUNKS", "true").lower() == "true")
+    min_chars_per_page: int = field(default_factory=lambda: int(os.getenv("PDF2MD_MIN_CHARS", "50")))
+
+settings = Settings()src/pdf2md/detector.pyCódigo1234567891011121314"""Detecta se o PDF é nativo (texto selecionável) ou escaneado (imagem)."""
+import fitz  # PyMuPDF
+
+def is_native_pdf(path: str, min_chars_per_page: int = 50) -> bool:
+    """True se o PDF tem texto selecionável suficiente (não é só imagem)."""
+    doc = fitz.open(path)
+    total_chars = sum(len(page.get_text().strip()) for page in doc)
+    pages = max(len(doc), 1)
+    doc.close()
+    return (total_chars / pages) > min_chars_per_page
+
+def detect_document_type(path: str, min_chars_per_page: int = 50) -> str:
+    """Retorna 'native' ou 'scanned'."""
+    return "native" if is_native_pdf(path, min_chars_per_page) else "scanned"src/pdf2md/extractor.pyCódigo12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970"""Extração principal de markdown com PyMuPDF4LLM."""
+from pathlib import Path
+
+import pymupdf4llm
+
+from .config import settings
+from .detector import detect_document_type
+from .output import ConversionResult
+
+def convert_pdf(path: str, extract_tables: bool = True) -> ConversionResult:
+    """Converte PDF para markdown. Usa OCR se o PDF for escaneado."""
+    path = Path(path)
+    doc_type = detect_document_type(str(path))
+
+    if doc_type == "scanned":
+        from .ocr_engine import ocr_scanned_pdf
+        return ocr_scanned_pdf(path)
+
+    md = pymupdf4llm.to_markdown(
+        str(path),
+        write_images=settings.write_images,
+        page_chunks=settings.page_chunks,
+    )
+
+    tables = None
+    if extract_tables:
+        from .table_extractor import extract_tables
+        tables = extract_tables(str(path))
+
+    return ConversionResult(
+        markdown=md,
+        tables=tables,
+        metadata={
+            "source": path.name,
+            "type": doc_type,
+            "pages": _count_pages(path),
+        },
+    )
+
+def convert_to_obsidian(path: str, vault_path: str) -> Path:
+    """Converte e salva como .md com frontmatter YAML no vault Obsidian."""
+    result = convert_pdf(path)
+    vault = Path(vault_path)
+    vault.mkdir(parents=True, exist_ok=True)
+
+    out = vault / f"{Path(path).stem}.md"
+    out.write_text(_with_frontmatter(result), encoding="utf-8")
+    return out
+
+def _count_pages(path: Path) -> int:
+    import fitz
+    doc = fitz.open(path)
+    n = len(doc)
+    doc.close()
+    return n
+
+def _with_frontmatter(result: ConversionResult) -> str:
+    meta = result.metadata
+    fm = (
+        "---\n"
+        f"title: {meta['source']}\n"
+        f"type: {meta['type']}\n"
+        f"pages: {meta['pages']}\n"
+        "tags: [pdf, importado]\n"
+        "---\n\n"
+    )
+    body = result.markdown if isinstance(result.markdown, str) else "\n\n".join(
+        c["text"] if isinstance(c, dict) else str(c) for c in result.markdown
+    )
+    return fm + bodysrc/pdf2md/table_extractor.pyCódigo12345678910111213141516171819202122"""Extração de tabelas com pdfplumber (fallback para tabelas complexas)."""
+import json
+from typing import Any
+
+import pdfplumber
+
+def extract_tables(path: str, pages: list[int] | None = None) -> dict[str, Any]:
+    """Extrai tabelas de cada página como listas de listas."""
+    result: dict[str, Any] = {}
+    with pdfplumber.open(path) as pdf:
+        target = pages if pages else range(len(pdf.pages))
+        for i in target:
+            tables = pdf.pages[i].extract_tables()
+            if tables:
+                result[f"page_{i + 1}"] = tables
+    return result
+
+def tables_to_json(path: str, out_path: str) -> None:
+    """Salva tabelas extraídas em JSON."""
+    tables = extract_tables(path)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(tables, f, ensure_ascii=False, indent=2)src/pdf2md/output.pyCódigo123456789"""Modelos de saída."""
+from dataclasses import dataclass, field
+from typing import Any
+
+@dataclass
+class ConversionResult:
+    markdown: str | list[Any]
+    tables: dict[str, Any] | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)src/pdf2md/ocr_engine.pyCódigo12345678910111213141516171819202122"""OCR para PDFs escaneados. Usa Marker (Surya). Requer GPU para escala."""
+from pathlib import Path
+
+from .output import ConversionResult
+
+def ocr_scanned_pdf(path: Path) -> ConversionResult:
+    """Converte PDF escaneado via Marker. Lento em CPU (~5-10s/página)."""
+    try:
+        from marker.convert import convert_pdf
+        from marker.models import load_all_models
+    except ImportError as e:
+        raise RuntimeError(
+            "OCR requer 'marker-pdf'. Instale com: pip install 'pdf2md[ocr]'"
+        ) from e
+
+    models = load_all_models()
+    text, images, metadata = convert_pdf(str(path), models)
+
+    return ConversionResult(
+        markdown=text,
+        metadata={"source": path.name, "type": "scanned", "ocr": "marker"},
+    )src/pdf2md/cli.pyCódigo12345678910111213141516171819202122232425262728293031323334353637383940"""Interface de linha de comando."""
+import argparse
+import sys
+from pathlib import Path
+
+from .extractor import convert_pdf, convert_to_obsidian
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="pdf2md", description="PDF → Markdown")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    conv = sub.add_parser("convert", help="Converte PDF para markdown")
+    conv.add_argument("input", help="Caminho do PDF")
+    conv.add_argument("-o", "--output", help="Arquivo .md de saída")
+    conv.add_argument("--no-tables", action="store_true", help="Pula extração de tabelas")
+
+    obs = sub.add_parser("obsidian", help="Exporta para vault Obsidian")
+    obs.add_argument("input", help="Caminho do PDF")
+    obs.add_argument("--vault", required=True, help="Caminho do vault Obsidian")
+
+    args = parser.parse_args(argv)
+
+    if args.command == "convert":
+        result = convert_pdf(args.input, extract_tables=not args.no_tables)
+        if args.output:
+            Path(args.output).write_text(
+                result.markdown if isinstance(result.markdown, str) else str(result.markdown),
+                encoding="utf-8",
+            )
+            print(f"✓ {args.output}")
+        else:
+            print(result.markdown)
+    elif args.command == "obsidian":
+        out = convert_to_obsidian(args.input, args.vault)
+        print(f"✓ {out}")
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())src/pdf2md/api.pyCódigo1234567891011121314151617181920212223"""API REST (opcional). Instalar: pip install 'pdf2md[api]'."""
+from fastapi import FastAPI, File, UploadFile
+from pydantic import BaseModel
+
+from .extractor import convert_pdf
+
+app = FastAPI(title="pdf2md", version="0.1.0")
+
+class ConvertResponse(BaseModel):
+    markdown: str
+    tables: dict | None = None
+    metadata: dict
+
+@app.post("/convert", response_model=ConvertResponse)
+async def convert(file: UploadFile = File(...)):
+    tmp = f"/tmp/{file.filename}"
+    with open(tmp, "wb") as f:
+        f.write(await file.read())
+    result = convert_pdf(tmp)
+    md = result.markdown if isinstance(result.markdown, str) else str(result.markdown)
+    return ConvertResponse(
+        markdown=md, tables=result.tables, metadata=result.metadata
+    )tests/test_detector.pyCódigo1234567891011"""Testes do detector de tipo."""
+from pdf2md.detector import detect_document_type, is_native_pdf
+
+def test_is_native_pdf_true(native_pdf):
+    assert is_native_pdf(str(native_pdf)) is True
+
+def test_detect_native(native_pdf):
+    assert detect_document_type(str(native_pdf)) == "native"
+
+def test_detect_scanned(scanned_pdf):
+    assert detect_document_type(str(scanned_pdf)) == "scanned"tests/conftest.pyCódigo123456789101112131415161718192021222324"""Fixtures compartilhadas."""
+import fitz
+import pytest
+
+@pytest.fixture
+def native_pdf(tmp_path):
+    """Gera um PDF nativo com texto."""
+    path = tmp_path / "native.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "Relatório de gestão " * 20)
+    doc.save(path)
+    doc.close()
+    return path
+
+@pytest.fixture
+def scanned_pdf(tmp_path):
+    """Gera um PDF escaneado (página em branco, sem texto)."""
+    path = tmp_path / "scanned.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(path)
+    doc.close()
+    return path.env.exampleCódigo123456PDF2MD_OCR_ENGINE=marker
+PDF2MD_MAX_PAGES=500
+PDF2MD_OUTPUT_DIR=./output
+PDF2MD_WRITE_IMAGES=true
+PDF2MD_PAGE_CHUNKS=true
+PDF2MD_MIN_CHARS=50.gitignoreCódigo__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+.env
+output/🗂️ Obsidian como Apoio (sem configuração prévia)O Obsidian funciona com pastas de arquivos .md — não precisa de instalação especial para o fluxo funcionar.Fluxo mínimo recomendado:
+Crie um vault apontando para uma pasta vazia (ex: ~/Obsidian/Vault).
+Use o comando do CLI para exportar:
+   pdf2md obsidian relatorio.pdf --vault ~/Obsidian/Vault
+Cada PDF vira um .md com frontmatter YAML (título, tipo, páginas, tags) — o Obsidian lê isso nativamente como metadados pesquisáveis.
+Para organizar por tipo, crie subpastas no vault e ajuste o --vault (ex: --vault ~/Obsidian/Vault/Contratos).
+Use tags no frontmatter para filtrar por categoria (contrato, prestação-de-contas, escala).
+Dica para IA/Cursor: mantenha o output_dir fora do vault para não poluir a indexação. Exporte só o que for definitivo.
+
+
+
