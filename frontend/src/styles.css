@@ -1,0 +1,79 @@
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: #161826;
+  color: #e9e9ed;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+::selection {
+  background: rgba(145, 132, 217, 0.3);
+}
+
+/* Renderização do markdown gerado (react-markdown) no tema escuro. */
+.md h1 {
+  font-size: 23px;
+  font-weight: 500;
+  margin: 0 0 10px;
+}
+.md h2 {
+  font-size: 19px;
+  font-weight: 500;
+  margin: 24px 0 8px;
+}
+.md h3 {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 20px 0 8px;
+}
+.md p,
+.md li {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: rgba(233, 233, 237, 0.85);
+}
+.md ul,
+.md ol {
+  margin: 6px 0 12px;
+  padding-left: 20px;
+}
+.md strong {
+  font-weight: 600;
+  color: #e9e9ed;
+}
+.md a {
+  color: #9184d9;
+}
+.md code {
+  background: #161826;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12.5px;
+}
+.md pre {
+  background: #161826;
+  padding: 12px;
+  border-radius: 6px;
+  overflow: auto;
+}
+.md table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 12.5px;
+}
+.md th,
+.md td {
+  border: 1px solid rgba(233, 233, 237, 0.16);
+  padding: 6px 9px;
+  text-align: left;
+}
+.md th {
+  color: rgba(233, 233, 237, 0.7);
+  font-weight: 500;
+}
