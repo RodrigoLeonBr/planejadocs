@@ -122,6 +122,23 @@ curl -X POST http://localhost:8000/convert \
 }
 ```
 
+## Onde ficam as extrações
+
+Toda importação é organizada **por tema** (a interface sempre pede o tema antes de converter). Ao informar um `tema`, a conversão é gravada em:
+
+```text
+<PDF2MD_OUTPUT_DIR>/<tema>/
+├── <arquivo>.md              # markdown convertido
+├── <arquivo>.tables.json     # tabelas (se houver)
+└── <arquivo>.tables.csv
+```
+
+- Raiz configurável via `PDF2MD_OUTPUT_DIR` (padrão `./output`).
+- O nome da pasta é normalizado (minúsculas, sem acento, espaços→`_`) para evitar temas duplicados — ex.: `Prestações de Conta` → `prestacoes_de_conta`.
+- `GET /themes` lista os temas já criados; a UI usa isso para sugerir temas existentes.
+- Sem `tema`, nada é persistido (o `/convert` só devolve o JSON).
+- A pasta `output/` é ignorada pelo git (contém conteúdo derivado de documentos sensíveis).
+
 ## Pontos de Integração
 
 - **API estável**: contratos Pydantic + OpenAPI versionados (semver).

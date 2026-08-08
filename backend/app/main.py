@@ -8,12 +8,20 @@ from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import JSONResponse
 
 from .core.output import build_convert_response
+from .core.storage import list_themes, save_extraction
 from .core.table_extractor import extract_tables
 from .errors import PDF2MDError, file_too_large
-from .schemas import ConvertResponse, ErrorResponse, HealthResponse, TablesResponse
+from .schemas import (
+    ConvertResponse,
+    ErrorResponse,
+    HealthResponse,
+    TablesResponse,
+    ThemesResponse,
+)
 
 VERSION = "0.1.0"
 MAX_FILE_SIZE = int(os.getenv("PDF2MD_MAX_FILE_SIZE_MB", "50")) * 1024 * 1024
+OUTPUT_ROOT = os.getenv("PDF2MD_OUTPUT_DIR", "./output")
 
 app = FastAPI(
     title="PlanejaDocs API",
@@ -53,14 +61,33 @@ async def convert_pdf(
     file: UploadFile = File(...),
     extract_tables: bool = Form(True),
     output_format: str = Form("markdown"),
+    tema: str | None = Form(None),
 ):
-    """Converte um PDF para Markdown. Não-PDF -> PDF2MD_005, >50MB -> PDF2MD_002."""
+    """Converte um PDF para Markdown. Não-PDF -> PDF2MD_005, >50MB -> PDF2MD_002.
+
+    Se `tema` for informado, persiste a extração em <PDF2MD_OUTPUT_DIR>/<tema>/.
+    """
     path = _save_temp(await file.read(), file.filename)
     try:
         result = build_convert_response(path, extract_tables)
     finally:
         os.remove(path)
+
+    if tema and tema.strip():
+        result["output"] = save_extraction(
+            OUTPUT_ROOT,
+            tema,
+            file.filename or "documento.pdf",
+            result["markdown"],
+            result["tables"] or [],
+        )
     return ConvertResponse(**result)
+
+
+@app.get("/themes", response_model=ThemesResponse)
+async def get_themes():
+    """Lista os temas já criados (pastas de extração)."""
+    return ThemesResponse(themes=list_themes(OUTPUT_ROOT))
 
 
 @app.post("/convert/tables", response_model=TablesResponse)

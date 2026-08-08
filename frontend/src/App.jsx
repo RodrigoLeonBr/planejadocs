@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { convertPdf } from "./api.js";
+import { convertPdf, getThemes } from "./api.js";
 import { formatDuration, tableBody, tableColumns, typeLabel } from "./format.js";
 
 const ACCENT = "#9184d9";
@@ -19,16 +19,27 @@ export default function App() {
   const [view, setView] = useState("upload");
   const [result, setResult] = useState(null); // { markdown, tables, metadata, name }
   const [extractTables, setExtractTables] = useState(true);
+  const [tema, setTema] = useState("");
+  const [themes, setThemes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    getThemes().then(setThemes);
+  }, []);
+
   async function handleFile(file) {
     if (!file) return;
+    if (!tema.trim()) {
+      setError({ message: "Informe o tema antes de importar o documento." });
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const data = await convertPdf(file, { extractTables });
+      const data = await convertPdf(file, { extractTables, tema });
       setResult({ ...data, name: file.name });
+      getThemes().then(setThemes); // atualiza sugestões com o tema novo
       setView("markdown");
     } catch (e) {
       setError({ code: e.code, message: e.message });
@@ -56,6 +67,9 @@ export default function App() {
           <UploadView
             extractTables={extractTables}
             setExtractTables={setExtractTables}
+            tema={tema}
+            setTema={setTema}
+            themes={themes}
             onFile={handleFile}
             loading={loading}
             error={error}
@@ -144,9 +158,19 @@ function Sidebar({ view, setView, hasResult }) {
   );
 }
 
-function UploadView({ extractTables, setExtractTables, onFile, loading, error }) {
+function UploadView({
+  extractTables,
+  setExtractTables,
+  tema,
+  setTema,
+  themes,
+  onFile,
+  loading,
+  error,
+}) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
+  const hasTema = tema.trim().length > 0;
 
   function onDrop(e) {
     e.preventDefault();
@@ -158,13 +182,49 @@ function UploadView({ extractTables, setExtractTables, onFile, loading, error })
     <div>
       <h1 style={h1Style}>Novo documento</h1>
       <p style={subtitleStyle}>
-        Envie um PDF para converter em Markdown estruturado.
+        Escolha um tema e envie um PDF para converter em Markdown estruturado.
       </p>
+
+      <div style={{ maxWidth: 560, marginBottom: 17 }}>
+        <label
+          htmlFor="tema"
+          style={{ display: "block", fontSize: 13, marginBottom: 6 }}
+        >
+          Tema <span style={{ color: ACCENT }}>*</span>
+          <span style={{ color: "rgba(233,233,237,0.5)", fontSize: 12 }}>
+            {" "}
+            — organiza a extração em pastas
+          </span>
+        </label>
+        <input
+          id="tema"
+          list="temas-existentes"
+          value={tema}
+          onChange={(e) => setTema(e.target.value)}
+          placeholder="ex: Contratos, Prestações de Conta, Relatórios…"
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            minHeight: 38,
+            padding: "8px 11px",
+            fontSize: 14,
+            color: "#e9e9ed",
+            background: "#161826",
+            border: `1px solid ${hasTema ? "rgba(233,233,237,0.16)" : ACCENT}`,
+            borderRadius: 8,
+          }}
+        />
+        <datalist id="temas-existentes">
+          {themes.map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
+      </div>
 
       <label
         onDragOver={(e) => {
           e.preventDefault();
-          setDragging(true);
+          if (hasTema && !loading) setDragging(true);
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
@@ -174,8 +234,9 @@ function UploadView({ extractTables, setExtractTables, onFile, loading, error })
           borderRadius: 14,
           padding: "40px 24px",
           textAlign: "center",
-          cursor: loading ? "wait" : "pointer",
+          cursor: loading ? "wait" : hasTema ? "pointer" : "not-allowed",
           background: dragging ? "rgba(145,132,217,0.05)" : "#1b1e2c",
+          opacity: hasTema ? 1 : 0.55,
           maxWidth: 560,
         }}
       >
@@ -183,7 +244,7 @@ function UploadView({ extractTables, setExtractTables, onFile, loading, error })
           ref={inputRef}
           type="file"
           accept="application/pdf"
-          disabled={loading}
+          disabled={loading || !hasTema}
           onChange={(e) => {
             onFile(e.target.files?.[0]);
             e.target.value = "";
@@ -193,7 +254,9 @@ function UploadView({ extractTables, setExtractTables, onFile, loading, error })
         <div style={{ fontSize: 14, marginBottom: 4 }}>
           {loading
             ? "Convertendo…"
-            : "Arraste um PDF aqui ou clique para escolher"}
+            : hasTema
+              ? "Arraste um PDF aqui ou clique para escolher"
+              : "Informe o tema acima para habilitar o envio"}
         </div>
         <div style={{ fontSize: 12, color: "rgba(233,233,237,0.5)" }}>
           Relatórios, contratos, prestações de conta, escalas · até 50&nbsp;MB
@@ -277,6 +340,12 @@ function MarkdownView({ result }) {
     { k: "Tabelas extraídas", v: String(result.tables?.length ?? 0) },
     { k: "Tempo de processamento", v: formatDuration(meta.duration_ms) },
     ...(meta.ocr ? [{ k: "Motor OCR", v: meta.ocr }] : []),
+    ...(result.output
+      ? [
+          { k: "Tema", v: result.output.tema },
+          { k: "Salvo em", v: result.output.dir },
+        ]
+      : []),
   ];
 
   return (

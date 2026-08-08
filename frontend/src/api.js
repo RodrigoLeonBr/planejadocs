@@ -14,11 +14,19 @@ async function post(path, formData) {
 
 export function convertPdf(
   file,
-  { extractTables = true, outputFormat = "markdown" } = {},
+  { extractTables = true, outputFormat = "markdown", tema = "" } = {},
 ) {
   const fd = new FormData();
   fd.append("file", file);
   fd.append("extract_tables", String(extractTables));
   fd.append("output_format", outputFormat);
+  if (tema.trim()) fd.append("tema", tema.trim());
   return post("/convert", fd);
+}
+
+export async function getThemes() {
+  const resp = await fetch("/themes");
+  if (!resp.ok) return [];
+  const data = await resp.json().catch(() => ({}));
+  return data.themes || [];
 }

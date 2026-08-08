@@ -36,6 +36,7 @@ Endpoint e biblioteca que convertem PDFs em Markdown estruturado, com detecção
 - **Tabelas**: extraídas por padrão; podem ser desativadas.
 - **OCR**: usado apenas quando o PDF é escaneado (~5% dos casos — escalas de trabalho).
 - **Chunking**: desligado por padrão; ativado por configuração.
+- **Tema e persistência**: a UI sempre pede um **tema** antes de cada importação. Se `tema` for informado no `/convert`, a extração é gravada em `<PDF2MD_OUTPUT_DIR>/<tema>/` — `<arquivo>.md` mais `<arquivo>.tables.json` e `.tables.csv` quando há tabelas. Sem `tema`, nada é persistido (comportamento anterior). O nome da pasta é normalizado (minúsculas, sem acento, espaços→`_`) para evitar temas duplicados; `GET /themes` lista os temas existentes.
 
 ## Erros Padronizados
 

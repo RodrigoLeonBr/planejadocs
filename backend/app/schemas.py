@@ -18,10 +18,23 @@ class DocumentMetadata(BaseModel):
     ocr: str | None = None
 
 
+class SavedOutput(BaseModel):
+    tema: str
+    dir: str
+    markdown: str
+    tables_json: str | None = None
+    tables_csv: str | None = None
+
+
 class ConvertResponse(BaseModel):
     markdown: str
     tables: list[dict[str, Any]] | None = None
     metadata: DocumentMetadata
+    output: SavedOutput | None = None
+
+
+class ThemesResponse(BaseModel):
+    themes: list[str]
 
 
 class TablesResponse(BaseModel):

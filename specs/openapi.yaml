@@ -48,6 +48,11 @@ paths:
                   enum: [markdown, json]
                   default: markdown
                   description: Formato da resposta
+                tema:
+                  type: string
+                  description: >-
+                    Tema para organizar a extração. Se informado, a conversão
+                    é persistida em <output_dir>/<tema>/ (markdown + tabelas).
       responses:
         "200":
           description: Conversão concluída
@@ -104,6 +109,18 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
+  /themes:
+    get:
+      summary: Lista os temas já criados (pastas de extração)
+      operationId: listThemes
+      responses:
+        "200":
+          description: Temas existentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThemesResponse"
+
 components:
   schemas:
     HealthResponse:
@@ -134,6 +151,31 @@ components:
           description: Tabelas extraídas (se solicitado)
         metadata:
           $ref: "#/components/schemas/DocumentMetadata"
+        output:
+          $ref: "#/components/schemas/SavedOutput"
+
+    SavedOutput:
+      type: object
+      description: Caminhos persistidos quando um tema é informado (senão null).
+      properties:
+        tema:
+          type: string
+        dir:
+          type: string
+        markdown:
+          type: string
+        tables_json:
+          type: string
+        tables_csv:
+          type: string
+
+    ThemesResponse:
+      type: object
+      properties:
+        themes:
+          type: array
+          items:
+            type: string
 
     DocumentMetadata:
       type: object

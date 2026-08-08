@@ -10,6 +10,7 @@ export default defineConfig({
     proxy: {
       "/convert": "http://localhost:8000",
       "/health": "http://localhost:8000",
+      "/themes": "http://localhost:8000",
     },
   },
   test: { environment: "node" },

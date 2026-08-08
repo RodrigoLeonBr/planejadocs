@@ -7,7 +7,9 @@ from app.schemas import (
     DocumentMetadata,
     ErrorResponse,
     HealthResponse,
+    SavedOutput,
     TablesResponse,
+    ThemesResponse,
 )
 
 
@@ -38,6 +40,21 @@ def test_convert_response_requires_markdown_and_metadata():
     assert r.tables is None
     with pytest.raises(ValidationError):
         ConvertResponse(markdown="# oi")  # falta metadata
+
+
+def test_convert_response_output_opcional():
+    meta = DocumentMetadata(source="a.pdf", type="native", pages=1)
+    r = ConvertResponse(markdown="# oi", metadata=meta)
+    assert r.output is None
+    saved = SavedOutput(tema="contratos", dir="/o/contratos", markdown="/o/c/a.md")
+    r2 = ConvertResponse(markdown="# oi", metadata=meta, output=saved)
+    assert r2.output.tema == "contratos"
+    assert r2.output.tables_json is None
+
+
+def test_themes_response():
+    t = ThemesResponse(themes=["contratos", "escalas"])
+    assert t.themes == ["contratos", "escalas"]
 
 
 def test_tables_response():

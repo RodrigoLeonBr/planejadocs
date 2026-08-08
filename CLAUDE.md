@@ -26,9 +26,13 @@ Core pipeline (`backend/app/core/`), run in order:
 4. **ocr_engine.py** — scanned via `marker-pdf` behind the `_run_marker` seam (lazy import). Any failure (dep missing or engine error) → `PDF2MD_004`. Optional dep, **not installed** by default. Current marker API (confirmed): `PdfConverter(create_model_dict())(path)` then `text_from_rendered(rendered)` → `(text, ext, images)`.
 5. **output.py** — `build_convert_response()` assembles markdown + tables + metadata.
 
-API (`app/main.py`): `/health`, `/convert`, `/convert/tables`. `PDF2MDError` → JSON `ErrorResponse` via exception handler. Uploads use `tempfile.mkstemp` (not `/tmp/…`, which breaks on the Windows host). `schemas.py` (Pydantic) mirrors `openapi.yaml` exactly.
+6. **storage.py** — persistence by theme. `save_extraction()` writes `<output_root>/<slug(tema)>/<stem>.md` (+ `.tables.json`/`.tables.csv` when tables exist); `slug_theme()` normalizes (lowercase, accent-fold, spaces→`_`) to dedupe themes; `list_themes()` lists existing folders.
 
-Config via env vars: `PDF2MD_MAX_PAGES` (500), `PDF2MD_MAX_FILE_SIZE_MB` (50), `PDF2MD_WRITE_IMAGES` (false).
+API (`app/main.py`): `/health`, `/convert`, `/convert/tables`, `GET /themes`. `PDF2MDError` → JSON `ErrorResponse` via exception handler. Uploads use `tempfile.mkstemp` (not `/tmp/…`, which breaks on the Windows host). `schemas.py` (Pydantic) mirrors `openapi.yaml` exactly.
+
+`/convert` takes an optional `tema` form field: when present, the extraction is persisted under `PDF2MD_OUTPUT_DIR/<tema>/` and the paths returned in `ConvertResponse.output`. **The UI always asks for a theme before each import** (`arquivos/` is input; `output/` is the organized result, gitignored). No `tema` → nothing persisted.
+
+Config via env vars: `PDF2MD_MAX_PAGES` (500), `PDF2MD_MAX_FILE_SIZE_MB` (50), `PDF2MD_WRITE_IMAGES` (false), `PDF2MD_OUTPUT_DIR` (`./output`).
 
 ## Dependencies & versions (validated 2026-08-08 on Python 3.13.14 / Node 22.13)
 
