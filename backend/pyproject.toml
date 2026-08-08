@@ -29,3 +29,7 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff.lint]
+# B008: File()/Form()/Depends() em defaults é o idioma padrão do FastAPI.
+ignore = ["B008"]
