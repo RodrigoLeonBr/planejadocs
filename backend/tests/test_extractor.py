@@ -2,6 +2,7 @@
 import pymupdf
 import pytest
 
+from app.core import ocr_engine
 from app.core.extractor import convert_to_markdown
 from app.errors import PDF2MDError
 
@@ -14,6 +15,14 @@ def test_native_pdf_gera_markdown(native_pdf):
     assert result["metadata"]["source"] == "native.pdf"
     assert result["metadata"]["duration_ms"] >= 0
     assert result["metadata"]["ocr"] is None
+
+
+def test_escaneado_delega_ao_ocr(scanned_pdf, monkeypatch):
+    monkeypatch.setattr(ocr_engine, "_run_marker", lambda p: "# Escala\ntexto OCR")
+    result = convert_to_markdown(str(scanned_pdf))
+    assert result["markdown"] == "# Escala\ntexto OCR"
+    assert result["metadata"]["type"] == "scanned"
+    assert result["metadata"]["ocr"] == "marker"
 
 
 def test_nao_pdf_retorna_erro_005(tmp_path):
