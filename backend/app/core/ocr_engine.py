@@ -1,30 +1,53 @@
-"""OCR para PDFs escaneados via Marker (Surya). Import lazy; lento em CPU.
+"""OCR para PDFs escaneados via RapidOCR (ONNX, CPU). Import lazy.
 
-Usado em ~5% dos casos (escalas de trabalho escaneadas). Qualquer falha
-(dependência ausente ou erro do engine) vira PDF2MD_004.
+Usado em ~5% dos casos (escalas/demonstrativos escaneados). Cada página é
+rasterizada e reconhecida; qualquer falha vira PDF2MD_004. Leve e sem GPU
+(~1s/página), sem binário externo.
 """
+import os
+
 from ..errors import ocr_failed
 
+OCR_DPI = int(os.getenv("PDF2MD_OCR_DPI", "200"))
 
-def _run_marker(path: str) -> str:
-    """Roda o Marker e devolve o markdown. Import lazy da dependência opcional.
+_engine = None
 
-    # ponytail: glue contra a API do marker-pdf 1.x, não coberto por teste
-    # (requer a dependência + modelos). Validar quando marker for instalado.
+
+def _get_engine():
+    """Carrega o RapidOCR uma vez (a inicialização é cara) e reaproveita."""
+    global _engine
+    if _engine is None:
+        from rapidocr import RapidOCR
+
+        _engine = RapidOCR()
+    return _engine
+
+
+def _run_ocr(path: str) -> str:
+    """Roda o OCR página a página e devolve markdown. Glue da dependência opcional.
+
+    # ponytail: não coberto por teste (requer os modelos ONNX do RapidOCR);
+    # validar num PDF escaneado real quando a dependência estiver instalada.
     """
-    from marker.converters.pdf import PdfConverter
-    from marker.models import create_model_dict
-    from marker.output import text_from_rendered
+    import pymupdf
 
-    converter = PdfConverter(artifact_dict=create_model_dict())
-    rendered = converter(path)
-    text, _, _ = text_from_rendered(rendered)
-    return text
+    engine = _get_engine()
+    doc = pymupdf.open(path)
+    try:
+        blocks = []
+        for i, page in enumerate(doc):
+            png = page.get_pixmap(dpi=OCR_DPI).tobytes("png")
+            result = engine(png)
+            texto = "\n\n".join(result.txts or ())
+            blocks.append(f"## Página {i + 1}\n\n{texto}".rstrip())
+        return "\n\n".join(blocks)
+    finally:
+        doc.close()
 
 
 def ocr_scanned_pdf(path: str) -> str:
     """Converte um PDF escaneado em markdown via OCR. Levanta PDF2MD_004 em falha."""
     try:
-        return _run_marker(path)
+        return _run_ocr(path)
     except Exception as e:
         raise ocr_failed() from e

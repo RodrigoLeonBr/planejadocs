@@ -34,7 +34,7 @@ def convert_to_markdown(path: str, write_images: bool = WRITE_IMAGES) -> dict:
         from .ocr_engine import ocr_scanned_pdf
 
         md = ocr_scanned_pdf(str(p))
-        ocr_engine = "marker"
+        ocr_engine = "rapidocr"
     else:
         # use_ocr=NEVER: PDFs nativos usam só extração de texto. O OCR embutido
         # do pymupdf4llm 1.28+ (RapidOCR) fica desligado; escaneados vão p/ Marker.

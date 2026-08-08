@@ -32,7 +32,7 @@ def too_many_pages() -> PDF2MDError:
 
 def ocr_failed() -> PDF2MDError:
     return PDF2MDError(
-        "PDF2MD_004", "OCR falhou. Verifique a dependência marker-pdf.", 500
+        "PDF2MD_004", "OCR falhou. Verifique a dependência rapidocr.", 500
     )
 
 

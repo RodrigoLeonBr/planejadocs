@@ -7,7 +7,7 @@ from app.errors import PDF2MDError
 
 
 def test_ocr_sucesso_retorna_texto(monkeypatch):
-    monkeypatch.setattr(ocr_engine, "_run_marker", lambda p: "# Escala\ntexto OCR")
+    monkeypatch.setattr(ocr_engine, "_run_ocr", lambda p: "# Escala\ntexto OCR")
     assert ocr_scanned_pdf("qualquer.pdf") == "# Escala\ntexto OCR"
 
 
@@ -15,7 +15,7 @@ def test_dependencia_ausente_erro_004(monkeypatch):
     def sem_marker(p):
         raise ImportError("No module named 'marker'")
 
-    monkeypatch.setattr(ocr_engine, "_run_marker", sem_marker)
+    monkeypatch.setattr(ocr_engine, "_run_ocr", sem_marker)
     with pytest.raises(PDF2MDError) as exc:
         ocr_scanned_pdf("qualquer.pdf")
     assert exc.value.code == "PDF2MD_004"
@@ -25,7 +25,7 @@ def test_falha_do_engine_erro_004(monkeypatch):
     def boom(p):
         raise RuntimeError("surya crashed")
 
-    monkeypatch.setattr(ocr_engine, "_run_marker", boom)
+    monkeypatch.setattr(ocr_engine, "_run_ocr", boom)
     with pytest.raises(PDF2MDError) as exc:
         ocr_scanned_pdf("qualquer.pdf")
     assert exc.value.code == "PDF2MD_004"

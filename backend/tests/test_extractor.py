@@ -33,11 +33,11 @@ def test_native_pdf_gera_markdown(native_pdf):
 
 
 def test_escaneado_delega_ao_ocr(scanned_pdf, monkeypatch):
-    monkeypatch.setattr(ocr_engine, "_run_marker", lambda p: "# Escala\ntexto OCR")
+    monkeypatch.setattr(ocr_engine, "_run_ocr", lambda p: "# Escala\ntexto OCR")
     result = convert_to_markdown(str(scanned_pdf))
     assert result["markdown"] == "# Escala\ntexto OCR"
     assert result["metadata"]["type"] == "scanned"
-    assert result["metadata"]["ocr"] == "marker"
+    assert result["metadata"]["ocr"] == "rapidocr"
 
 
 def test_nao_pdf_retorna_erro_005(tmp_path):

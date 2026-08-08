@@ -10,7 +10,7 @@ O PlanejaDocs converte PDFs (relatórios de gestão, contratos, prestações de 
 
 | Camada | Tecnologia |
 |---|---|
-| Backend | Python 3.10+ · FastAPI · PyMuPDF4LLM · pdfplumber · Marker (OCR) |
+| Backend | Python 3.10+ · FastAPI · PyMuPDF4LLM · pdfplumber · RapidOCR (OCR, CPU) |
 | Frontend | React · JavaScript · Vite |
 | Dados | JSON · CSV · Excel (pandas/openpyxl) |
 | Qualidade | pytest · ruff · openapi (spec-first) |
