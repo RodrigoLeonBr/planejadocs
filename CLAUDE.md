@@ -48,7 +48,8 @@ Installed versions differ from the loose `pyproject`/`package.json` ranges — t
 Gotchas:
 - **pymupdf4llm 1.28 ships embedded RapidOCR** (transitive: `rapidocr` 3.8.1, `onnxruntime` 1.20.1) and auto-OCRs image pages by default (`OCRMode.SELECT_KEEP_OLD`) — slow and noisy even on native PDFs. `extractor.py` forces `use_ocr=OCRMode.NEVER` to keep native = text-only. Do not remove that.
 - The `>=0.0.18` pin some skeletons show is wrong; the real API is 1.28.x (`from pymupdf4llm.ocr import OCRMode`).
-- **marker-pdf on CPU is ~1–5 min/page** and downloads ~1 GB of models on first run. Expected for the ~5% scanned docs; keep the OCR path lazy/optional.
+- **marker-pdf is 2.0.0** (surya-ocr 0.22.1) — it dropped the pure-torch recognition backend. Recognition now needs an external inference backend: `llamacpp` (a `llama-server` binary), `openai_client` (external API — **don't**, sends SMS data out), or `vllm` (GPU). On this CPU host: a prebuilt `llama-server` from ggml-org/llama.cpp releases, pointed to via `LLAMA_CPP_BINARY` (see `backend/.env.example`). Without it, scanned PDFs return `PDF2MD_004`.
+- **OCR validated** end-to-end on a real scanned SMS doc: ~7 min/page on CPU (first run also downloads ~1 GB of surya models). Keep the OCR path lazy/optional. Known quirk: marker may fail to kill the `llama-server` subprocess on Windows (`WinError 5`) — the run still succeeds; kill orphans with `Stop-Process -Name llama-server` if they linger.
 - **Large native docs are slow** synchronously (e.g. 218 pages ≈ 205 s) and would exceed default HTTP client timeouts — async processing (README "pós-MVP") matters sooner than planned.
 - Frontend `npm audit` flags are **dev-only** (esbuild/vite dev server); production deps = 0 vulns. Don't force `vite@8`.
 
