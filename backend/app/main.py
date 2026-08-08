@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from .core.output import build_convert_response
 from .core.storage import (
@@ -15,7 +15,22 @@ from .core.storage import (
     save_extraction,
     slug_theme,
 )
-from .core.table_extractor import extract_tables
+from .core.table_extractor import (
+    extract_tables,
+    tables_to_csv,
+    tables_to_excel_bytes,
+    tables_to_json,
+)
+
+_DOWNLOAD_FORMATS = {
+    "json": ("application/json", "tables.json", lambda t: tables_to_json(t).encode()),
+    "csv": ("text/csv; charset=utf-8", "tables.csv", lambda t: tables_to_csv(t).encode()),
+    "excel": (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "tables.xlsx",
+        tables_to_excel_bytes,
+    ),
+}
 from .errors import PDF2MDError, file_too_large
 from .schemas import (
     ConvertResponse,
@@ -113,6 +128,24 @@ async def get_extraction(tema: str, name: str):
     if data is None:
         raise HTTPException(status_code=404, detail="Extração não encontrada.")
     return ExtractionContent(name=name, markdown=data["markdown"], tables=data["tables"])
+
+
+@app.get("/themes/{tema}/{name}/download")
+async def download_tables(tema: str, name: str, format: str = "json"):
+    """Baixa as tabelas de uma extração em JSON, CSV ou Excel."""
+    fmt = _DOWNLOAD_FORMATS.get(format)
+    if fmt is None:
+        raise HTTPException(status_code=400, detail="Formato inválido.")
+    data = read_extraction(OUTPUT_ROOT, tema, name)
+    if data is None or not data["tables"]:
+        raise HTTPException(status_code=404, detail="Sem tabelas para download.")
+    media, ext, serialize = fmt
+    stem = Path(name).name
+    return Response(
+        content=serialize(data["tables"]),
+        media_type=media,
+        headers={"Content-Disposition": f'attachment; filename="{stem}.{ext}"'},
+    )
 
 
 @app.post("/convert/tables", response_model=TablesResponse)

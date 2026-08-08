@@ -1,4 +1,5 @@
 """Testes do extrator de tabelas (spec convert.md)."""
+import io
 import json
 
 from openpyxl import load_workbook
@@ -7,6 +8,7 @@ from app.core.table_extractor import (
     extract_tables,
     save_excel,
     tables_to_csv,
+    tables_to_excel_bytes,
     tables_to_json,
 )
 
@@ -35,6 +37,14 @@ def test_tables_to_csv(table_pdf):
     csv_text = tables_to_csv(tables)
     assert "Nome,Valor" in csv_text
     assert "UBS A,100" in csv_text
+
+
+def test_tables_to_excel_bytes(table_pdf):
+    tables = extract_tables(str(table_pdf))
+    data = tables_to_excel_bytes(tables)
+    assert isinstance(data, bytes) and len(data) > 0
+    wb = load_workbook(io.BytesIO(data))
+    assert wb.active["A1"].value == "Nome"
 
 
 def test_save_excel(table_pdf, tmp_path):

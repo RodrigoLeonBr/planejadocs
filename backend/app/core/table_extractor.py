@@ -34,14 +34,26 @@ def tables_to_csv(tables: list[dict]) -> str:
     return buf.getvalue()
 
 
-def save_excel(tables: list[dict], out_path: str) -> None:
-    """Salva as tabelas em .xlsx, uma planilha por tabela (1ª linha = cabeçalho)."""
+def _write_excel(tables: list[dict], target) -> None:
+    """Escreve as tabelas em `target` (caminho ou buffer). 1 planilha por tabela."""
     import pandas as pd
 
-    with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+    with pd.ExcelWriter(target, engine="openpyxl") as writer:
         for i, t in enumerate(tables):
             rows = t["rows"]
             if not rows:
                 continue
             df = pd.DataFrame(rows[1:], columns=rows[0])
             df.to_excel(writer, sheet_name=f"tabela_{i + 1}", index=False)
+
+
+def save_excel(tables: list[dict], out_path: str) -> None:
+    """Salva as tabelas em .xlsx, uma planilha por tabela (1ª linha = cabeçalho)."""
+    _write_excel(tables, out_path)
+
+
+def tables_to_excel_bytes(tables: list[dict]) -> bytes:
+    """Serializa as tabelas em .xlsx e retorna os bytes (sem tocar o disco)."""
+    buf = io.BytesIO()
+    _write_excel(tables, buf)
+    return buf.getvalue()

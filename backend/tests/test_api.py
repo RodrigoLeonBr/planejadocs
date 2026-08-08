@@ -123,6 +123,50 @@ def test_le_extracao_inexistente_404(client, tmp_path, monkeypatch):
     assert resp.status_code == 404
 
 
+def _convert_table_pdf_com_tema(client, table_pdf, out_root, monkeypatch):
+    monkeypatch.setattr(main, "OUTPUT_ROOT", str(out_root))
+    with open(table_pdf, "rb") as f:
+        client.post(
+            "/convert",
+            files={"file": ("tabela.pdf", f.read(), "application/pdf")},
+            data={"tema": "Financeiro"},
+        )
+
+
+@pytest.mark.parametrize(
+    "fmt, ctype",
+    [
+        ("json", "application/json"),
+        ("csv", "text/csv"),
+        (
+            "excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ),
+    ],
+)
+def test_download_tabelas(client, table_pdf, tmp_path, monkeypatch, fmt, ctype):
+    out_root = tmp_path / "out"
+    _convert_table_pdf_com_tema(client, table_pdf, out_root, monkeypatch)
+    resp = client.get(f"/themes/Financeiro/tabela/download?format={fmt}")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith(ctype)
+    assert "attachment" in resp.headers["content-disposition"]
+    assert len(resp.content) > 0
+
+
+def test_download_sem_tabelas_404(client, native_pdf, tmp_path, monkeypatch):
+    out_root = tmp_path / "out"
+    monkeypatch.setattr(main, "OUTPUT_ROOT", str(out_root))
+    with open(native_pdf, "rb") as f:
+        client.post(
+            "/convert",
+            files={"file": ("semtab.pdf", f.read(), "application/pdf")},
+            data={"tema": "Financeiro"},
+        )
+    resp = client.get("/themes/Financeiro/semtab/download?format=json")
+    assert resp.status_code == 404
+
+
 def test_convert_tables(client, table_pdf):
     resp = client.post("/convert/tables", files=_upload(table_pdf, "table.pdf"))
     assert resp.status_code == 200

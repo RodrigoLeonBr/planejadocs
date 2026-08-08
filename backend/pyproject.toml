@@ -29,6 +29,8 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# Silencia deprecation de terceiro (surya/marker) — não é código nosso.
+filterwarnings = ["ignore:.*class-based `config`.*:DeprecationWarning"]
 
 [tool.ruff.lint]
 # B008: File()/Form()/Depends() em defaults é o idioma padrão do FastAPI.

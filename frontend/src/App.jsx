@@ -605,12 +605,47 @@ function BrowseView() {
                     {opened.markdown}
                   </ReactMarkdown>
                 </div>
+                {opened.tables?.length > 0 && (
+                  <DownloadBar tema={tema} name={opened.name} />
+                )}
                 <TablesBlock tables={opened.tables} />
               </>
             )}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DownloadBar({ tema, name }) {
+  const base = `/themes/${encodeURIComponent(tema)}/${encodeURIComponent(name)}/download`;
+  const formats = [
+    { fmt: "json", label: "JSON" },
+    { fmt: "csv", label: "CSV" },
+    { fmt: "excel", label: "Excel" },
+  ];
+  return (
+    <div style={{ display: "flex", gap: 6, marginBottom: 14, alignItems: "center" }}>
+      <span style={{ fontSize: 12, color: "rgba(233,233,237,0.55)" }}>
+        Baixar tabelas:
+      </span>
+      {formats.map((f) => (
+        <a
+          key={f.fmt}
+          href={`${base}?format=${f.fmt}`}
+          style={{
+            fontSize: 12,
+            color: ACCENT,
+            border: `1px solid ${ACCENT}`,
+            borderRadius: 6,
+            padding: "4px 9px",
+            textDecoration: "none",
+          }}
+        >
+          {f.label}
+        </a>
+      ))}
     </div>
   );
 }
