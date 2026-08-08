@@ -92,20 +92,38 @@ planejadocs/
 
 ## Setup
 
-### Backend
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-uvicorn app.main:app --reload
-```
+Instale as dependências uma vez:
 
-### Frontend
-```bash
+```powershell
+# Backend (Python 3.10+)
+cd backend
+pip install -e ".[dev]"
+cd ..
+# Frontend
 cd frontend
 npm install
-npm run dev
+cd ..
+```
+
+### Rodar tudo de uma vez (backend + frontend)
+
+Na raiz do projeto (Windows / PowerShell):
+
+```powershell
+./run.ps1
+```
+
+Sobe o backend em `http://localhost:8000` e o frontend em `http://localhost:5173`
+(o Vite faz proxy de `/convert`, `/themes`, `/health` para o backend). `Ctrl+C`
+encerra os dois. Abra `http://localhost:5173` no navegador.
+
+### Ou separadamente (dois terminais)
+
+```bash
+# terminal 1
+cd backend && uvicorn app.main:app --reload
+# terminal 2
+cd frontend && npm run dev
 ```
 
 ## Uso da API
