@@ -10,3 +10,6 @@ build/
 .ruff_cache/
 output/
 node_modules/
+
+# Documentos reais da SMS (dados sensíveis) - nunca versionar
+arquivos/
