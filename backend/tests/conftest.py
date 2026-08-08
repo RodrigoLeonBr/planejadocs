@@ -9,7 +9,10 @@ def native_pdf(tmp_path):
     path = tmp_path / "native.pdf"
     doc = pymupdf.open()
     page = doc.new_page()
-    page.insert_text((72, 72), "Relatório de gestão " * 20)
+    rect = pymupdf.Rect(50, 50, 545, 800)
+    page.insert_textbox(
+        rect, "Relatório de gestão da Secretaria Municipal de Saúde. " * 10, fontsize=11
+    )
     doc.save(path)
     doc.close()
     return path
