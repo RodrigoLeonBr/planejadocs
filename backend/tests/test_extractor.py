@@ -1,10 +1,25 @@
 """Testes do extrator de markdown (spec convert.md)."""
 import pymupdf
+import pymupdf4llm
 import pytest
+from pymupdf4llm.ocr import OCRMode
 
 from app.core import ocr_engine
 from app.core.extractor import convert_to_markdown
 from app.errors import PDF2MDError
+
+
+def test_native_desliga_ocr_embutido(native_pdf, monkeypatch):
+    """Nativo não deve acionar o OCR embutido do pymupdf4llm (só Marker p/ scanned)."""
+    captured = {}
+
+    def fake_to_markdown(path, **kwargs):
+        captured.update(kwargs)
+        return "# ok"
+
+    monkeypatch.setattr(pymupdf4llm, "to_markdown", fake_to_markdown)
+    convert_to_markdown(str(native_pdf))
+    assert captured["use_ocr"] == OCRMode.NEVER
 
 
 def test_native_pdf_gera_markdown(native_pdf):

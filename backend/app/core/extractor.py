@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import pymupdf4llm
+from pymupdf4llm.ocr import OCRMode
 
 from ..errors import not_a_pdf, too_many_pages
 from .detector import count_pages, detect_document_type
@@ -35,8 +36,13 @@ def convert_to_markdown(path: str, write_images: bool = WRITE_IMAGES) -> dict:
         md = ocr_scanned_pdf(str(p))
         ocr_engine = "marker"
     else:
+        # use_ocr=NEVER: PDFs nativos usam só extração de texto. O OCR embutido
+        # do pymupdf4llm 1.28+ (RapidOCR) fica desligado; escaneados vão p/ Marker.
         md = pymupdf4llm.to_markdown(
-            str(p), write_images=write_images, page_chunks=False
+            str(p),
+            write_images=write_images,
+            page_chunks=False,
+            use_ocr=OCRMode.NEVER,
         )
         ocr_engine = None
 
