@@ -30,3 +30,18 @@ export async function getThemes() {
   const data = await resp.json().catch(() => ({}));
   return data.themes || [];
 }
+
+export async function getExtractions(tema) {
+  const resp = await fetch(`/themes/${encodeURIComponent(tema)}`);
+  if (!resp.ok) return [];
+  const data = await resp.json().catch(() => ({}));
+  return data.extractions || [];
+}
+
+export async function getExtraction(tema, name) {
+  const resp = await fetch(
+    `/themes/${encodeURIComponent(tema)}/${encodeURIComponent(name)}`,
+  );
+  if (!resp.ok) throw new Error(`Erro ${resp.status}`);
+  return resp.json();
+}

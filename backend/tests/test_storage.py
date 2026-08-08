@@ -1,7 +1,13 @@
 """Testes da persistência por tema (spec convert.md)."""
 import json
 
-from app.core.storage import list_themes, save_extraction, slug_theme
+from app.core.storage import (
+    list_extractions,
+    list_themes,
+    read_extraction,
+    save_extraction,
+    slug_theme,
+)
 
 
 def test_slug_normaliza_e_evita_duplicados():
@@ -38,3 +44,29 @@ def test_list_themes(tmp_path):
     save_extraction(str(tmp_path), "Contratos", "a.pdf", "x", [])
     save_extraction(str(tmp_path), "Escalas", "b.pdf", "y", [])
     assert list_themes(str(tmp_path)) == ["contratos", "escalas"]
+
+
+def test_list_extractions(tmp_path):
+    assert list_extractions(str(tmp_path), "Contratos") == []
+    save_extraction(str(tmp_path), "Contratos", "b.pdf", "x", [])
+    save_extraction(str(tmp_path), "Contratos", "a.pdf", "y", [])
+    assert list_extractions(str(tmp_path), "Contratos") == ["a", "b"]  # ordenado
+
+
+def test_read_extraction(tmp_path):
+    tables = [{"page": 1, "table_index": 0, "rows": [["A"], ["1"]]}]
+    save_extraction(str(tmp_path), "Relatórios", "loa 2024.pdf", "# LOA", tables)
+    got = read_extraction(str(tmp_path), "Relatórios", "loa 2024")
+    assert got["markdown"] == "# LOA"
+    assert got["tables"] == tables
+
+
+def test_read_extraction_inexistente_retorna_none(tmp_path):
+    assert read_extraction(str(tmp_path), "x", "nada") is None
+
+
+def test_read_extraction_bloqueia_path_traversal(tmp_path):
+    save_extraction(str(tmp_path), "Contratos", "a.pdf", "seguro", [])
+    save_extraction(str(tmp_path), "Outros", "secret.pdf", "sensível", [])
+    # traversal p/ outro tema é neutralizado -> não escapa da pasta do tema
+    assert read_extraction(str(tmp_path), "Contratos", "../outros/secret") is None

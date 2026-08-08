@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { convertPdf, getThemes } from "./api.js";
+import { convertPdf, getExtraction, getExtractions, getThemes } from "./api.js";
 import { formatDuration, tableBody, tableColumns, typeLabel } from "./format.js";
 
 const ACCENT = "#9184d9";
@@ -13,6 +13,7 @@ const NAV = [
   { key: "upload", label: "Novo documento" },
   { key: "markdown", label: "Markdown gerado" },
   { key: "tables", label: "Tabelas extraídas" },
+  { key: "browse", label: "Extrações salvas" },
 ];
 
 export default function App() {
@@ -77,6 +78,7 @@ export default function App() {
         )}
         {view === "markdown" && <MarkdownView result={result} />}
         {view === "tables" && <TablesView result={result} />}
+        {view === "browse" && <BrowseView />}
       </main>
     </div>
   );
@@ -105,7 +107,7 @@ function Sidebar({ view, setView, hasResult }) {
       </div>
       <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {NAV.map((n) => {
-          const disabled = n.key !== "upload" && !hasResult;
+          const disabled = (n.key === "markdown" || n.key === "tables") && !hasResult;
           const active = view === n.key;
           return (
             <button
@@ -416,11 +418,21 @@ function TablesView({ result }) {
       <p style={subtitleStyle}>
         {tables.length} tabela(s) extraída(s) deste documento.
       </p>
-      {tables.length === 0 && (
-        <div style={{ fontSize: 13, color: "rgba(233,233,237,0.4)" }}>
-          Nenhuma tabela encontrada.
-        </div>
-      )}
+      <TablesBlock tables={tables} />
+    </div>
+  );
+}
+
+function TablesBlock({ tables }) {
+  if (!tables || tables.length === 0) {
+    return (
+      <div style={{ fontSize: 13, color: "rgba(233,233,237,0.4)" }}>
+        Nenhuma tabela.
+      </div>
+    );
+  }
+  return (
+    <>
       {tables.map((t, i) => {
         const cols = tableColumns(t.rows);
         const body = tableBody(t.rows);
@@ -464,6 +476,141 @@ function TablesView({ result }) {
           </div>
         );
       })}
+    </>
+  );
+}
+
+function BrowseView() {
+  const [themes, setThemes] = useState([]);
+  const [tema, setTema] = useState("");
+  const [extractions, setExtractions] = useState([]);
+  const [opened, setOpened] = useState(null); // { name, markdown, tables }
+
+  useEffect(() => {
+    getThemes().then(setThemes);
+  }, []);
+
+  function pickTheme(t) {
+    setTema(t);
+    setOpened(null);
+    setExtractions([]);
+    if (t) getExtractions(t).then(setExtractions);
+  }
+
+  function open(name) {
+    getExtraction(tema, name).then((d) => setOpened({ name, ...d }));
+  }
+
+  return (
+    <div>
+      <h1 style={h1Style}>Extrações salvas</h1>
+      <p style={subtitleStyle}>Navegue pelas conversões já salvas, por tema.</p>
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 17, alignItems: "center" }}>
+        <label style={{ fontSize: 13, color: "rgba(233,233,237,0.7)" }}>Tema</label>
+        <select
+          value={tema}
+          onChange={(e) => pickTheme(e.target.value)}
+          style={{
+            background: CARD,
+            color: "#e9e9ed",
+            border: "1px solid rgba(233,233,237,0.16)",
+            borderRadius: 8,
+            padding: "6px 10px",
+            fontSize: 13,
+          }}
+        >
+          <option value="">Selecione…</option>
+          {themes.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {tema === "" && themes.length === 0 && (
+        <div style={{ fontSize: 13, color: "rgba(233,233,237,0.4)" }}>
+          Nenhum tema ainda. Importe um documento com tema para começar.
+        </div>
+      )}
+
+      {tema && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "240px 1fr",
+            gap: 17,
+            alignItems: "start",
+          }}
+        >
+          <div
+            style={{
+              background: CARD,
+              borderRadius: 8,
+              boxShadow: "0 0 0 1px #3f424d",
+              padding: 12,
+            }}
+          >
+            <div style={sectionLabelStyle}>Documentos ({extractions.length})</div>
+            {extractions.length === 0 && (
+              <div style={{ fontSize: 12, color: "rgba(233,233,237,0.4)" }}>
+                Nenhuma extração neste tema.
+              </div>
+            )}
+            {extractions.map((name) => (
+              <button
+                key={name}
+                onClick={() => open(name)}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  border: "none",
+                  background:
+                    opened?.name === name ? "rgba(145,132,217,0.12)" : "transparent",
+                  color: opened?.name === name ? ACCENT : "#e9e9ed",
+                  padding: "7px 8px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            {!opened && (
+              <div style={{ fontSize: 13, color: "rgba(233,233,237,0.4)" }}>
+                Selecione um documento à esquerda.
+              </div>
+            )}
+            {opened && (
+              <>
+                <div
+                  className="md"
+                  style={{
+                    background: CARD,
+                    borderRadius: 8,
+                    padding: "24px 28px",
+                    boxShadow: "0 0 0 1px #3f424d",
+                    maxHeight: "60vh",
+                    overflow: "auto",
+                    marginBottom: 17,
+                  }}
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {opened.markdown}
+                  </ReactMarkdown>
+                </div>
+                <TablesBlock tables={opened.tables} />
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

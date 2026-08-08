@@ -4,16 +4,24 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
 from .core.output import build_convert_response
-from .core.storage import list_themes, save_extraction
+from .core.storage import (
+    list_extractions,
+    list_themes,
+    read_extraction,
+    save_extraction,
+    slug_theme,
+)
 from .core.table_extractor import extract_tables
 from .errors import PDF2MDError, file_too_large
 from .schemas import (
     ConvertResponse,
     ErrorResponse,
+    ExtractionContent,
+    ExtractionList,
     HealthResponse,
     TablesResponse,
     ThemesResponse,
@@ -88,6 +96,23 @@ async def convert_pdf(
 async def get_themes():
     """Lista os temas já criados (pastas de extração)."""
     return ThemesResponse(themes=list_themes(OUTPUT_ROOT))
+
+
+@app.get("/themes/{tema}", response_model=ExtractionList)
+async def get_extractions(tema: str):
+    """Lista as extrações salvas de um tema."""
+    return ExtractionList(
+        tema=slug_theme(tema), extractions=list_extractions(OUTPUT_ROOT, tema)
+    )
+
+
+@app.get("/themes/{tema}/{name}", response_model=ExtractionContent)
+async def get_extraction(tema: str, name: str):
+    """Lê uma extração salva (markdown + tabelas)."""
+    data = read_extraction(OUTPUT_ROOT, tema, name)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Extração não encontrada.")
+    return ExtractionContent(name=name, markdown=data["markdown"], tables=data["tables"])
 
 
 @app.post("/convert/tables", response_model=TablesResponse)

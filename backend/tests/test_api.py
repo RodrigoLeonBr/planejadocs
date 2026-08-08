@@ -88,6 +88,41 @@ def test_themes_lista_temas(client, native_pdf, tmp_path, monkeypatch):
     assert resp.json()["themes"] == ["contratos"]
 
 
+def test_lista_extracoes_do_tema(client, native_pdf, tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "OUTPUT_ROOT", str(tmp_path / "out"))
+    with open(native_pdf, "rb") as f:
+        content = f.read()
+    client.post(
+        "/convert",
+        files={"file": ("relatorio.pdf", content, "application/pdf")},
+        data={"tema": "Contratos"},
+    )
+    resp = client.get("/themes/Contratos")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["tema"] == "contratos"
+    assert body["extractions"] == ["relatorio"]
+
+
+def test_le_extracao_salva(client, native_pdf, tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "OUTPUT_ROOT", str(tmp_path / "out"))
+    with open(native_pdf, "rb") as f:
+        client.post(
+            "/convert",
+            files={"file": ("relatorio.pdf", f.read(), "application/pdf")},
+            data={"tema": "Contratos"},
+        )
+    resp = client.get("/themes/Contratos/relatorio")
+    assert resp.status_code == 200
+    assert "Relatório de gestão" in resp.json()["markdown"]
+
+
+def test_le_extracao_inexistente_404(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "OUTPUT_ROOT", str(tmp_path / "out"))
+    resp = client.get("/themes/contratos/nada")
+    assert resp.status_code == 404
+
+
 def test_convert_tables(client, table_pdf):
     resp = client.post("/convert/tables", files=_upload(table_pdf, "table.pdf"))
     assert resp.status_code == 200

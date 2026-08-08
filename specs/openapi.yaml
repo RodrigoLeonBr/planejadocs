@@ -121,6 +121,53 @@ paths:
               schema:
                 $ref: "#/components/schemas/ThemesResponse"
 
+  /themes/{tema}:
+    get:
+      summary: Lista as extrações salvas de um tema
+      operationId: listExtractions
+      parameters:
+        - name: tema
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Extrações do tema
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractionList"
+
+  /themes/{tema}/{name}:
+    get:
+      summary: Lê uma extração salva (markdown + tabelas)
+      operationId: readExtraction
+      parameters:
+        - name: tema
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Conteúdo da extração
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractionContent"
+        "404":
+          description: Extração não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthResponse:
@@ -176,6 +223,28 @@ components:
           type: array
           items:
             type: string
+
+    ExtractionList:
+      type: object
+      properties:
+        tema:
+          type: string
+        extractions:
+          type: array
+          items:
+            type: string
+
+    ExtractionContent:
+      type: object
+      properties:
+        name:
+          type: string
+        markdown:
+          type: string
+        tables:
+          type: array
+          items:
+            type: object
 
     DocumentMetadata:
       type: object

@@ -28,7 +28,7 @@ Core pipeline (`backend/app/core/`), run in order:
 
 6. **storage.py** — persistence by theme. `save_extraction()` writes `<output_root>/<slug(tema)>/<stem>.md` (+ `.tables.json`/`.tables.csv` when tables exist); `slug_theme()` normalizes (lowercase, accent-fold, spaces→`_`) to dedupe themes; `list_themes()` lists existing folders.
 
-API (`app/main.py`): `/health`, `/convert`, `/convert/tables`, `GET /themes`. `PDF2MDError` → JSON `ErrorResponse` via exception handler. Uploads use `tempfile.mkstemp` (not `/tmp/…`, which breaks on the Windows host). `schemas.py` (Pydantic) mirrors `openapi.yaml` exactly.
+API (`app/main.py`): `/health`, `/convert`, `/convert/tables`, `GET /themes`, `GET /themes/{tema}` (extractions in a theme), `GET /themes/{tema}/{name}` (saved markdown + tables, 404 if absent — path traversal neutralized via `Path(name).name` + `slug_theme`). The frontend "Extrações salvas" view browses these. `PDF2MDError` → JSON `ErrorResponse` via exception handler. Uploads use `tempfile.mkstemp` (not `/tmp/…`, which breaks on the Windows host). `schemas.py` (Pydantic) mirrors `openapi.yaml` exactly.
 
 `/convert` takes an optional `tema` form field: when present, the extraction is persisted under `PDF2MD_OUTPUT_DIR/<tema>/` and the paths returned in `ConvertResponse.output`. **The UI always asks for a theme before each import** (`arquivos/` is input; `output/` is the organized result, gitignored). No `tema` → nothing persisted.
 

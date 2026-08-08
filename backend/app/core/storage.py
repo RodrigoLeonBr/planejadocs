@@ -25,6 +25,33 @@ def list_themes(output_root: str) -> list[str]:
     return sorted(p.name for p in root.iterdir() if p.is_dir())
 
 
+def list_extractions(output_root: str, tema: str) -> list[str]:
+    """Lista os nomes (stems) das extrações de um tema, ordenados."""
+    folder = Path(output_root) / slug_theme(tema)
+    if not folder.is_dir():
+        return []
+    return sorted(p.stem for p in folder.glob("*.md"))
+
+
+def read_extraction(output_root: str, tema: str, name: str) -> dict | None:
+    """Lê uma extração salva (markdown + tabelas). None se não existir.
+
+    `Path(name).name` neutraliza path traversal; `slug_theme` restringe o tema.
+    """
+    folder = Path(output_root) / slug_theme(tema)
+    stem = Path(name).name
+    md_path = folder / f"{stem}.md"
+    if not md_path.is_file():
+        return None
+    tables_path = folder / f"{stem}.tables.json"
+    tables = (
+        json.loads(tables_path.read_text(encoding="utf-8"))
+        if tables_path.is_file()
+        else []
+    )
+    return {"markdown": md_path.read_text(encoding="utf-8"), "tables": tables}
+
+
 def save_extraction(
     output_root: str,
     tema: str,

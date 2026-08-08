@@ -37,6 +37,17 @@ class ThemesResponse(BaseModel):
     themes: list[str]
 
 
+class ExtractionList(BaseModel):
+    tema: str
+    extractions: list[str]
+
+
+class ExtractionContent(BaseModel):
+    name: str
+    markdown: str
+    tables: list[dict[str, Any]]
+
+
 class TablesResponse(BaseModel):
     tables: list[dict[str, Any]]
     format: Literal["json", "csv", "excel"]
