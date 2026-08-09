@@ -29,3 +29,11 @@ def test_falha_do_engine_erro_004(monkeypatch):
     with pytest.raises(PDF2MDError) as exc:
         ocr_scanned_pdf("qualquer.pdf")
     assert exc.value.code == "PDF2MD_004"
+
+
+def test_latin_count_pontua_orientacao():
+    # orientação certa: texto latino legível; errada: OCR alucina CJK
+    certa = ["Sarah Alves", "PERIODO", "21/12/2025"]
+    errada = ["市 口 品", "口口口"]
+    assert ocr_engine._latin_count(certa) > ocr_engine._latin_count(errada)
+    assert ocr_engine._latin_count(None) == 0
