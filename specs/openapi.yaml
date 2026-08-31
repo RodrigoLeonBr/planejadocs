@@ -53,6 +53,13 @@ paths:
                   description: >-
                     Tema para organizar a extração. Se informado, a conversão
                     é persistida em <output_dir>/<tema>/ (markdown + tabelas).
+                output_dir:
+                  type: string
+                  description: >-
+                    Pasta raiz de saída, sobrepõe PDF2MD_OUTPUT_DIR. Permite
+                    gravar na pasta de outro projeto. Só tem efeito com `tema`.
+                    Uso local single-user — não expor com escrita em path
+                    arbitrário em rede.
       responses:
         "200":
           description: Conversão concluída

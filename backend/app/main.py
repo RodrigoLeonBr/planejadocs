@@ -85,10 +85,12 @@ async def convert_pdf(
     extract_tables: bool = Form(True),
     output_format: str = Form("markdown"),
     tema: str | None = Form(None),
+    output_dir: str | None = Form(None),
 ):
     """Converte um PDF para Markdown. Não-PDF -> PDF2MD_005, >50MB -> PDF2MD_002.
 
-    Se `tema` for informado, persiste a extração em <PDF2MD_OUTPUT_DIR>/<tema>/.
+    Se `tema` for informado, persiste a extração em <output_dir ou
+    PDF2MD_OUTPUT_DIR>/<tema>/. `output_dir` grava na pasta de outro projeto.
     """
     path = _save_temp(await file.read(), file.filename)
     try:
@@ -97,8 +99,10 @@ async def convert_pdf(
         os.remove(path)
 
     if tema and tema.strip():
+        # ponytail: output_dir = escrita em path arbitrário; ok em tool local
+        # single-user, NÃO expor assim em rede.
         result["output"] = save_extraction(
-            OUTPUT_ROOT,
+            output_dir or OUTPUT_ROOT,
             tema,
             file.filename or "documento.pdf",
             result["markdown"],

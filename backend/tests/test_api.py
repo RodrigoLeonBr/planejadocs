@@ -63,6 +63,20 @@ def test_convert_com_tema_persiste(client, native_pdf, tmp_path, monkeypatch):
     assert (out_root / "relatorios_de_gestao" / "relatorio.md").exists()
 
 
+def test_convert_output_dir_sobrepoe_root(client, native_pdf, tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "OUTPUT_ROOT", str(tmp_path / "root"))
+    alvo = tmp_path / "outroprojeto" / "docs"
+    with open(native_pdf, "rb") as f:
+        resp = client.post(
+            "/convert",
+            files={"file": ("relatorio.pdf", f.read(), "application/pdf")},
+            data={"tema": "Gestão", "output_dir": str(alvo)},
+        )
+    assert resp.status_code == 200
+    assert (alvo / "gestao" / "relatorio.md").exists()
+    assert not (tmp_path / "root").exists()  # não usou o root default
+
+
 def test_convert_sem_tema_nao_persiste(client, native_pdf, tmp_path, monkeypatch):
     out_root = tmp_path / "out"
     monkeypatch.setattr(main, "OUTPUT_ROOT", str(out_root))

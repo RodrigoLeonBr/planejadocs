@@ -30,7 +30,9 @@ Core pipeline (`backend/app/core/`), run in order:
 
 API (`app/main.py`): `/health`, `/convert`, `/convert/tables`, `GET /themes`, `GET /themes/{tema}` (extractions in a theme), `GET /themes/{tema}/{name}` (saved markdown + tables, 404 if absent — path traversal neutralized via `Path(name).name` + `slug_theme`). The frontend "Extrações salvas" view browses these. `PDF2MDError` → JSON `ErrorResponse` via exception handler. Uploads use `tempfile.mkstemp` (not `/tmp/…`, which breaks on the Windows host). `schemas.py` (Pydantic) mirrors `openapi.yaml` exactly.
 
-`/convert` takes an optional `tema` form field: when present, the extraction is persisted under `PDF2MD_OUTPUT_DIR/<tema>/` and the paths returned in `ConvertResponse.output`. **The UI always asks for a theme before each import** (`arquivos/` is input; `output/` is the organized result, gitignored). No `tema` → nothing persisted.
+`/convert` takes an optional `tema` form field: when present, the extraction is persisted under `PDF2MD_OUTPUT_DIR/<tema>/` and the paths returned in `ConvertResponse.output`. **The UI always asks for a theme before each import** (`arquivos/` is input; `output/` is the organized result, gitignored). No `tema` → nothing persisted. An optional `output_dir` form field overrides `PDF2MD_OUTPUT_DIR` per request (only with `tema`) — writes the `.md` into another project's folder. It writes to an arbitrary path: local single-user only, do not expose over the network.
+
+**MCP server** (`backend/mcp_server.py`, FastMCP, `[mcp]` optional dep): exposes the pipeline to Claude Code, reusing `core/` directly (no HTTP). Tools: `pdf_to_md(pdf_path, dest_dir, tema)` (converts + saves into `dest_dir/<tema>/`), `list_themes_in`, `list_extractions_in`, `read_md`. Register: `claude mcp add planejadocs -- python <abs>/backend/mcp_server.py`. Same arbitrary-path caveat as `output_dir`.
 
 Config via env vars: `PDF2MD_MAX_PAGES` (500), `PDF2MD_MAX_FILE_SIZE_MB` (50), `PDF2MD_WRITE_IMAGES` (false), `PDF2MD_OUTPUT_DIR` (`./output`).
 
