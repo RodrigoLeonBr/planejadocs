@@ -11,6 +11,7 @@ export default defineConfig({
       "/convert": "http://localhost:8000",
       "/health": "http://localhost:8000",
       "/themes": "http://localhost:8000",
+      "/tables": "http://localhost:8000",
     },
   },
   test: { environment: "node" },
