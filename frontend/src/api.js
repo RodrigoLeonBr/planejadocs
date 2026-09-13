@@ -14,14 +14,38 @@ async function post(path, formData) {
 
 export function convertPdf(
   file,
-  { extractTables = true, outputFormat = "markdown", tema = "" } = {},
+  {
+    extractTables = true,
+    outputFormat = "markdown",
+    tema = "",
+    tableEngine = "pdfplumber",
+  } = {},
 ) {
   const fd = new FormData();
   fd.append("file", file);
   fd.append("extract_tables", String(extractTables));
   fd.append("output_format", outputFormat);
+  fd.append("table_engine", tableEngine);
   if (tema.trim()) fd.append("tema", tema.trim());
   return post("/convert", fd);
+}
+
+// Baixa as tabelas já convertidas (em memória) como .csv ou .xlsx, sem salvar.
+export async function downloadTables(tables, format, filename) {
+  const resp = await fetch(`/tables/download?format=${format}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tables }),
+  });
+  if (!resp.ok) throw new Error(`Erro ${resp.status}`);
+  const blob = await resp.blob();
+  const ext = format === "excel" ? "xlsx" : "csv";
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filename || "tabelas"}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function getThemes() {

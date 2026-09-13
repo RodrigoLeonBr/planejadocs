@@ -116,6 +116,45 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
+  /tables/download:
+    post:
+      summary: Baixa tabelas já extraídas como CSV ou Excel (sem persistir)
+      operationId: downloadTablesInline
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, excel]
+            default: csv
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tables
+              properties:
+                tables:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        "200":
+          description: Arquivo das tabelas (binário)
+          content:
+            text/csv: {}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: {}
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: Corpo sem tabelas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /themes:
     get:
       summary: Lista os temas já criados (pastas de extração)

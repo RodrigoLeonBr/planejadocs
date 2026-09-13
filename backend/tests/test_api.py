@@ -181,6 +181,31 @@ def test_download_sem_tabelas_404(client, native_pdf, tmp_path, monkeypatch):
     assert resp.status_code == 404
 
 
+@pytest.mark.parametrize(
+    "fmt, ctype",
+    [
+        ("csv", "text/csv"),
+        (
+            "excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ),
+    ],
+)
+def test_tables_download_inline(client, table_pdf, fmt, ctype):
+    conv = client.post("/convert", files=_upload(table_pdf, "tabela.pdf"))
+    tables = conv.json()["tables"]
+    resp = client.post(f"/tables/download?format={fmt}", json={"tables": tables})
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith(ctype)
+    assert "attachment" in resp.headers["content-disposition"]
+    assert len(resp.content) > 0
+
+
+def test_tables_download_inline_sem_tabelas_404(client):
+    resp = client.post("/tables/download?format=csv", json={"tables": []})
+    assert resp.status_code == 404
+
+
 def test_convert_tables(client, table_pdf):
     resp = client.post("/convert/tables", files=_upload(table_pdf, "table.pdf"))
     assert resp.status_code == 200
@@ -188,3 +213,37 @@ def test_convert_tables(client, table_pdf):
     assert body["count"] == 1
     assert body["format"] == "json"
     assert body["tables"][0]["rows"][0] == ["Nome", "Valor"]
+
+
+def test_convert_tables_encaminha_motor(client, table_pdf, monkeypatch):
+    visto = {}
+
+    def fake(path, engine="pdfplumber"):
+        visto["engine"] = engine
+        return []
+
+    monkeypatch.setattr(main, "extract_tables", fake)
+    client.post(
+        "/convert/tables",
+        files=_upload(table_pdf, "table.pdf"),
+        data={"table_engine": "pymupdf"},
+    )
+    assert visto["engine"] == "pymupdf"
+
+
+def test_convert_encaminha_motor(client, table_pdf, monkeypatch):
+    from app.core import output
+
+    visto = {}
+
+    def fake(path, engine="pdfplumber"):
+        visto["engine"] = engine
+        return []
+
+    monkeypatch.setattr(output, "extract_tables", fake)
+    client.post(
+        "/convert",
+        files=_upload(table_pdf, "table.pdf"),
+        data={"table_engine": "pymupdf"},
+    )
+    assert visto["engine"] == "pymupdf"

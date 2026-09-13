@@ -33,9 +33,12 @@ Endpoint e biblioteca que convertem PDFs em Markdown estruturado, com detecção
 ## Regras de Negócio
 
 - **Imagens**: descartadas por padrão (config `write_images=false`).
-- **Tabelas**: extraídas por padrão; podem ser desativadas.
+- **Tabelas**: extraídas por padrão; podem ser desativadas. Dois motores de extração selecionáveis por requisição via `table_engine`:
+  - `pdfplumber` (padrão): rápido; comportamento histórico. Preserva o texto bruto das células (inclusive quebras internas).
+  - `pymupdf` (alta fidelidade): extrai o texto de cada célula pelo seu bounding box (`page.get_textbox`) e normaliza o espaçamento (colapsa runs de espaço/quebra em um único espaço). Corrige o glifo-a-glifo espaçado que o `pdfplumber` gera em algumas planilhas (ex.: valor `3 8 , 0 0` → `38,00`; `A TIVIDADE` → `ATIVIDADE`). Recomendado quando a integridade dos valores/números importa. `table_engine` inválido → cai no padrão `pdfplumber`.
 - **OCR**: usado apenas quando o PDF é escaneado (~5% dos casos — escalas de trabalho).
 - **Chunking**: desligado por padrão; ativado por configuração.
+- **Download direto de planilha**: `POST /tables/download?format=csv|excel` recebe as tabelas já retornadas por `/convert` (corpo `{tables:[...]}`) e devolve o arquivo (`.csv` ou `.xlsx`) sem exigir tema/persistência. Corpo sem tabelas → 404. Permite baixar a planilha na tela de resultado logo após converter.
 - **Tema e persistência**: a UI sempre pede um **tema** antes de cada importação. Se `tema` for informado no `/convert`, a extração é gravada em `<PDF2MD_OUTPUT_DIR>/<tema>/` — `<arquivo>.md` mais `<arquivo>.tables.json` e `.tables.csv` quando há tabelas. Sem `tema`, nada é persistido (comportamento anterior). O nome da pasta é normalizado (minúsculas, sem acento, espaços→`_`) para evitar temas duplicados; `GET /themes` lista os temas existentes.
 
 ## Erros Padronizados

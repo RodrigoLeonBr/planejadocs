@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { convertPdf, getExtraction, getExtractions, getThemes } from "./api.js";
+import {
+  convertPdf,
+  downloadTables,
+  getExtraction,
+  getExtractions,
+  getThemes,
+} from "./api.js";
 import { formatDuration, tableBody, tableColumns, typeLabel } from "./format.js";
 
 const ACCENT = "#9184d9";
@@ -16,10 +22,20 @@ const NAV = [
   { key: "browse", label: "Extrações salvas" },
 ];
 
+const ENGINES = [
+  { value: "pdfplumber", label: "Rápido", hint: "pdfplumber · padrão" },
+  {
+    value: "pymupdf",
+    label: "Alta fidelidade",
+    hint: "PyMuPDF · corrige espaçamento de números/texto",
+  },
+];
+
 export default function App() {
   const [view, setView] = useState("upload");
   const [result, setResult] = useState(null); // { markdown, tables, metadata, name }
   const [extractTables, setExtractTables] = useState(true);
+  const [tableEngine, setTableEngine] = useState("pdfplumber");
   const [tema, setTema] = useState("");
   const [themes, setThemes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -38,7 +54,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const data = await convertPdf(file, { extractTables, tema });
+      const data = await convertPdf(file, { extractTables, tema, tableEngine });
       setResult({ ...data, name: file.name });
       getThemes().then(setThemes); // atualiza sugestões com o tema novo
       setView("markdown");
@@ -68,6 +84,8 @@ export default function App() {
           <UploadView
             extractTables={extractTables}
             setExtractTables={setExtractTables}
+            tableEngine={tableEngine}
+            setTableEngine={setTableEngine}
             tema={tema}
             setTema={setTema}
             themes={themes}
@@ -163,6 +181,8 @@ function Sidebar({ view, setView, hasResult }) {
 function UploadView({
   extractTables,
   setExtractTables,
+  tableEngine,
+  setTableEngine,
   tema,
   setTema,
   themes,
@@ -282,7 +302,7 @@ function UploadView({
             justifyContent: "space-between",
           }}
         >
-          <span style={{ fontSize: 13 }}>Extrair tabelas (pdfplumber)</span>
+          <span style={{ fontSize: 13 }}>Extrair tabelas</span>
           <button
             onClick={() => setExtractTables((v) => !v)}
             aria-pressed={extractTables}
@@ -310,6 +330,53 @@ function UploadView({
             />
           </button>
         </div>
+
+        {extractTables && (
+          <div
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: "1px solid rgba(233,233,237,0.08)",
+            }}
+          >
+            <div style={{ fontSize: 13, marginBottom: 8 }}>Motor de extração</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {ENGINES.map((e) => {
+                const active = tableEngine === e.value;
+                return (
+                  <button
+                    key={e.value}
+                    onClick={() => setTableEngine(e.value)}
+                    aria-pressed={active}
+                    style={{
+                      flex: 1,
+                      textAlign: "left",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      background: active ? "rgba(145,132,217,0.12)" : "transparent",
+                      border: `1px solid ${active ? ACCENT : "rgba(233,233,237,0.16)"}`,
+                      color: "#e9e9ed",
+                    }}
+                  >
+                    <div style={{ fontSize: 13, color: active ? ACCENT : "#e9e9ed" }}>
+                      {e.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "rgba(233,233,237,0.5)",
+                        marginTop: 2,
+                      }}
+                    >
+                      {e.hint}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -412,13 +479,80 @@ function MarkdownView({ result }) {
 
 function TablesView({ result }) {
   const tables = result.tables || [];
+  const stem = (result.name || "tabelas").replace(/\.pdf$/i, "");
   return (
     <div>
       <h1 style={h1Style}>Tabelas extraídas</h1>
       <p style={subtitleStyle}>
         {tables.length} tabela(s) extraída(s) deste documento.
       </p>
+      {tables.length > 0 ? (
+        <InlineDownloadBar tables={tables} filename={stem} />
+      ) : (
+        <div
+          style={{
+            maxWidth: 560,
+            marginBottom: 17,
+            border: "1px solid #4a3a2a",
+            background: "#2a241e",
+            borderRadius: 8,
+            padding: "12px 14px",
+            fontSize: 13,
+            color: "#f2dcc6",
+          }}
+        >
+          Nenhuma tabela detectável neste PDF — planilha não gerada.
+        </div>
+      )}
       <TablesBlock tables={tables} />
+    </div>
+  );
+}
+
+function InlineDownloadBar({ tables, filename }) {
+  const [busy, setBusy] = useState(null);
+  const [err, setErr] = useState(null);
+  const formats = [
+    { fmt: "excel", label: "Baixar .xlsx" },
+    { fmt: "csv", label: "Baixar .csv" },
+  ];
+
+  async function grab(fmt) {
+    setBusy(fmt);
+    setErr(null);
+    try {
+      await downloadTables(tables, fmt, filename);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", gap: 6, marginBottom: 17, alignItems: "center" }}>
+      <span style={{ fontSize: 12, color: "rgba(233,233,237,0.55)" }}>
+        Baixar como planilha:
+      </span>
+      {formats.map((f) => (
+        <button
+          key={f.fmt}
+          onClick={() => grab(f.fmt)}
+          disabled={busy !== null}
+          style={{
+            fontSize: 12,
+            color: ACCENT,
+            background: "transparent",
+            border: `1px solid ${ACCENT}`,
+            borderRadius: 6,
+            padding: "4px 9px",
+            cursor: busy ? "wait" : "pointer",
+          }}
+        >
+          {busy === f.fmt ? "…" : f.label}
+        </button>
+      ))}
+      {err && <span style={{ fontSize: 12, color: "#f2c6cc" }}>{err}</span>}
     </div>
   );
 }

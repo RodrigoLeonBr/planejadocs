@@ -4,7 +4,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, Response
 
 from .core.output import build_convert_response
@@ -86,15 +86,17 @@ async def convert_pdf(
     output_format: str = Form("markdown"),
     tema: str | None = Form(None),
     output_dir: str | None = Form(None),
+    table_engine: str = Form("pdfplumber"),
 ):
     """Converte um PDF para Markdown. Não-PDF -> PDF2MD_005, >50MB -> PDF2MD_002.
 
     Se `tema` for informado, persiste a extração em <output_dir ou
     PDF2MD_OUTPUT_DIR>/<tema>/. `output_dir` grava na pasta de outro projeto.
+    `table_engine`: `pdfplumber` (padrão) ou `pymupdf` (alta fidelidade).
     """
     path = _save_temp(await file.read(), file.filename)
     try:
-        result = build_convert_response(path, extract_tables)
+        result = build_convert_response(path, extract_tables, table_engine)
     finally:
         os.remove(path)
 
@@ -152,15 +154,37 @@ async def download_tables(tema: str, name: str, format: str = "json"):
     )
 
 
+@app.post("/tables/download")
+async def download_tables_inline(
+    tables: list = Body(..., embed=True), format: str = "csv"
+):
+    """Baixa tabelas já extraídas (corpo `{tables:[...]}`) como CSV ou Excel.
+
+    Não persiste nada — serve a tela de resultado logo após `/convert`.
+    """
+    fmt = _DOWNLOAD_FORMATS.get(format)
+    if fmt is None:
+        raise HTTPException(status_code=400, detail="Formato inválido.")
+    if not tables:
+        raise HTTPException(status_code=404, detail="Sem tabelas para download.")
+    media, ext, serialize = fmt
+    return Response(
+        content=serialize(tables),
+        media_type=media,
+        headers={"Content-Disposition": f'attachment; filename="{ext}"'},
+    )
+
+
 @app.post("/convert/tables", response_model=TablesResponse)
 async def convert_tables(
     file: UploadFile = File(...),
     format: str = Form("json"),
+    table_engine: str = Form("pdfplumber"),
 ):
-    """Extrai apenas as tabelas de um PDF."""
+    """Extrai apenas as tabelas de um PDF. `table_engine`: pdfplumber|pymupdf."""
     path = _save_temp(await file.read(), file.filename)
     try:
-        tables = extract_tables(path)
+        tables = extract_tables(path, engine=table_engine)
     finally:
         os.remove(path)
     return TablesResponse(tables=tables, format=format, count=len(tables))
