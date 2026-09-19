@@ -6,17 +6,47 @@ import json
 import pdfplumber
 
 
-def extract_tables(path: str) -> list[dict]:
+def _normalize_cell(text: str | None) -> str:
+    """Colapsa runs de espaço/quebra em um único espaço e apara as bordas."""
+    return " ".join((text or "").split())
+
+
+def extract_tables(path: str, engine: str = "pdfplumber") -> list[dict]:
     """Extrai todas as tabelas do PDF. Lista vazia se não houver tabela.
 
     Cada item: {"page": int (1-based), "table_index": int, "rows": list[list]}.
+    `engine="pymupdf"` = alta fidelidade (célula via bbox + normalização de
+    espaçamento); qualquer outro valor cai no padrão `pdfplumber`.
     """
+    if engine == "pymupdf":
+        return _extract_pymupdf(path)
     result: list[dict] = []
     with pdfplumber.open(path) as pdf:
         for i, page in enumerate(pdf.pages):
             for j, table in enumerate(page.extract_tables()):
                 if table:
                     result.append({"page": i + 1, "table_index": j, "rows": table})
+    return result
+
+
+def _extract_pymupdf(path: str) -> list[dict]:
+    """Alta fidelidade: texto de cada célula pelo bbox (`get_textbox`) + normalização.
+
+    Evita o glifo-a-glifo espaçado que o pdfplumber gera em planilhas com
+    letter-spacing largo (ex.: `3 8 , 0 0` → `38,00`).
+    """
+    import pymupdf
+
+    result: list[dict] = []
+    with pymupdf.open(path) as doc:
+        for i, page in enumerate(doc):
+            for j, table in enumerate(page.find_tables().tables):
+                rows = [
+                    [_normalize_cell(page.get_textbox(cb) if cb else "") for cb in row.cells]
+                    for row in table.rows
+                ]
+                if rows:
+                    result.append({"page": i + 1, "table_index": j, "rows": rows})
     return result
 
 

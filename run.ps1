@@ -12,9 +12,21 @@ if (-not (Test-Path "$root\frontend\node_modules")) {
 Write-Host "Backend  -> http://localhost:8000" -ForegroundColor Green
 Write-Host "Frontend -> http://localhost:5173" -ForegroundColor Green
 
+# Detecta o interpretador Python com uvicorn disponível
+$pythonCmd = "python"
+foreach ($cand in @("python3", "python")) {
+    if (Get-Command $cand -ErrorAction SilentlyContinue) {
+        $check = & $cand -c "import uvicorn; print('ok')" 2>$null
+        if ($check -eq "ok") {
+            $pythonCmd = $cand
+            break
+        }
+    }
+}
+
 # Backend em processo separado (uvicorn com reload).
 $backend = Start-Process -PassThru -NoNewWindow -WorkingDirectory "$root\backend" `
-    -FilePath "python" `
+    -FilePath $pythonCmd `
     -ArgumentList "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"
 
 try {

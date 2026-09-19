@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <style>
+    body{margin:0;background:#161826;color:#e9e9ed;font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.55}
+    ::selection{background:rgba(145,132,217,0.3)}
+    input,button{font-family:inherit}
+  </style>
+</helmet>
+
+<div style="display:flex;min-height:100vh;background:#161826;color:#e9e9ed">
+
+  <!-- Sidebar -->
+  <div style="width:240px;flex:none;display:flex;flex-direction:column;padding:17px 12px;border-right:1px solid rgba(233,233,237,0.10);gap:22px">
+    <div>
+      <div style="font-family:Inter,sans-serif;font-weight:500;font-size:18px;letter-spacing:-0.01em">PlanejaDocs</div>
+      <div style="font-size:11px;color:rgba(233,233,237,0.5);margin-top:2px">Unidade de Planejamento &middot; SMS</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="6">
+        <div onClick="{{ item.onClick }}" style="display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:8px;cursor:pointer;font-size:14px;color:{{ item.color }}" style-hover="background:rgba(233,233,237,0.06)">
+          <span style="width:5px;height:5px;border-radius:50%;flex:none;background:{{ item.dotColor }}"></span>
+          {{ item.label }}
+        </div>
+      </sc-for>
+    </div>
+    <div style="margin-top:auto;font-size:11px;color:rgba(233,233,237,0.4);padding:0 9px">v0.1.0 &middot; API local</div>
+  </div>
+
+  <!-- Main -->
+  <div style="flex:1;min-width:0;padding:22px 32px;display:flex;flex-direction:column;gap:17px">
+
+    <sc-if value="{{ isUpload }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <h1 style="font-family:Inter,sans-serif;font-weight:500;font-size:26px;margin:0 0 4px;letter-spacing:-0.015em">Novo documento</h1>
+        <p style="font-size:13px;color:rgba(233,233,237,0.55);margin:0 0 20px">Envie um PDF para converter em Markdown estruturado.</p>
+
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:17px;align-items:start">
+          <div>
+            <label for="fileInput" style="display:block;border:1.5px dashed rgba(233,233,237,0.22);border-radius:14px;padding:40px 24px;text-align:center;cursor:pointer;background:#1b1e2c" style-hover="border-color:#9184d9;background:rgba(145,132,217,0.05)">
+              <input id="fileInput" type="file" accept="application/pdf" onChange="{{ onFileChange }}" style="display:none"></input>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#9184d9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 12px">
+                <path d="M12 15V4M12 4l-4.5 4.5M12 4l4.5 4.5"></path>
+                <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"></path>
+              </svg>
+              <div style="font-size:14px;color:#e9e9ed;margin-bottom:4px">Arraste um PDF aqui ou clique para escolher</div>
+              <div style="font-size:12px;color:rgba(233,233,237,0.5)">Relatórios, contratos, prestações de conta, escalas &middot; até 50&nbsp;MB</div>
+            </label>
+
+            <div style="margin-top:17px;border:1px solid rgba(233,233,237,0.10);border-radius:8px;padding:12px" class="card">
+              <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#9184d9;margin-bottom:9px">Opções de conversão</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+                <span style="font-size:13px">Extrair tabelas (pdfplumber)</span>
+                <div onClick="{{ toggleExtractTables }}" style="width:36px;height:20px;border-radius:10px;background:{{ extractTablesBg }};position:relative;cursor:pointer;transition:background .15s">
+                  <div style="width:16px;height:16px;border-radius:50%;background:#e9e9ed;position:absolute;top:2px;left:{{ extractTablesDotLeft }};transition:left .15s"></div>
+                </div>
+              </div>
+              <div style="font-size:12px;color:rgba(233,233,237,0.6);margin-bottom:6px">Formato de saída</div>
+              <div style="display:inline-flex;overflow:hidden;border:1px solid rgba(233,233,237,0.16);border-radius:8px">
+                <sc-for list="{{ outputFormats }}" as="fmt" hint-placeholder-count="2">
+                  <div onClick="{{ fmt.onClick }}" style="padding:7px 12px;font-size:13px;cursor:pointer;color:{{ fmt.color }};box-shadow:{{ fmt.shadow }}">{{ fmt.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div style="border:1px solid rgba(233,233,237,0.10);border-radius:8px;padding:12px;background:#232532">
+            <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#9184d9;margin-bottom:9px">Últimas conversões</div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{ recentDocs }}" as="doc" hint-placeholder-count="3">
+                <div onClick="{{ doc.onClick }}" style="display:flex;flex-direction:column;gap:3px;cursor:pointer;padding:8px 0;border-bottom:1px solid rgba(233,233,237,0.08)">
+                  <div style="font-size:13px;color:#e9e9ed;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ doc.name }}</div>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="display:inline-flex;font-size:11px;padding:2px 8px;border-radius:6px;background:{{ doc.tagBg }};color:{{ doc.tagColor }}">{{ doc.statusLabel }}</span>
+                    <span style="font-size:11px;color:rgba(233,233,237,0.45)">{{ doc.metaLine }}</span>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ hasNoRecent }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;color:rgba(233,233,237,0.4)">Nenhuma conversão ainda.</div>
+              </sc-if>
+            </div>
+            <div onClick="{{ goToQueue }}" style="margin-top:10px;font-size:12px;color:#9184d9;cursor:pointer">Ver fila completa &rarr;</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isQueue }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:Inter,sans-serif;font-weight:500;font-size:26px;margin:0 0 4px;letter-spacing:-0.015em">Fila de conversões</h1>
+        <p style="font-size:13px;color:rgba(233,233,237,0.55);margin:0 0 17px">{{ queueCountLabel }}</p>
+
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          <thead>
+            <tr style="background:linear-gradient(to right,transparent,rgba(233,233,237,0.16) 48px,rgba(233,233,237,0.16) calc(100% - 48px),transparent) no-repeat bottom / 100% 1px">
+              <th style="text-align:left;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(233,233,237,0.6);padding:8px;font-weight:500">Arquivo</th>
+              <th style="text-align:left;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(233,233,237,0.6);padding:8px;font-weight:500">Tipo</th>
+              <th style="text-align:left;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(233,233,237,0.6);padding:8px;font-weight:500">Status / Etapa</th>
+              <th style="text-align:left;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(233,233,237,0.6);padding:8px;font-weight:500">Páginas</th>
+              <th style="text-align:left;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(233,233,237,0.6);padding:8px;font-weight:500">Tabelas</th>
+              <th style="text-align:left;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(233,233,237,0.6);padding:8px;font-weight:500"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ documents }}" as="doc" hint-placeholder-count="4">
+              <tr style="background:linear-gradient(to right,transparent,rgba(233,233,237,0.08) 48px,rgba(233,233,237,0.08) calc(100% - 48px),transparent) no-repeat bottom / 100% 1px" style-hover="background-color:rgba(233,233,237,0.04)">
+                <td style="padding:9px 8px;color:#e9e9ed">{{ doc.name }}</td>
+                <td style="padding:9px 8px;color:rgba(233,233,237,0.7)">{{ doc.typeLabel }}</td>
+                <td style="padding:9px 8px">
+                  <span style="display:inline-flex;align-items:center;font-size:11px;padding:3px 10px;border-radius:6px;background:{{ doc.tagBg }};color:{{ doc.tagColor }}">{{ doc.stageLabel }}</span>
+                </td>
+                <td style="padding:9px 8px;color:rgba(233,233,237,0.7)">{{ doc.pagesLabel }}</td>
+                <td style="padding:9px 8px;color:rgba(233,233,237,0.7)">{{ doc.tablesLabel }}</td>
+                <td style="padding:9px 8px;text-align:right">
+                  <span onClick="{{ doc.onView }}" style="font-size:12px;color:#9184d9;cursor:pointer">{{ doc.actionLabel }}</span>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isMarkdown }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+          <h1 style="font-family:Inter,sans-serif;font-weight:500;font-size:26px;margin:0;letter-spacing:-0.015em">Markdown gerado</h1>
+          <select onChange="{{ onSelectDoc }}" value="{{ selectedId }}" style="background:#232532;color:#e9e9ed;border:1px solid rgba(233,233,237,0.16);border-radius:8px;padding:6px 10px;font-size:13px">
+            <sc-for list="{{ doneDocs }}" as="doc" hint-placeholder-count="3">
+              <option value="{{ doc.id }}">{{ doc.name }}</option>
+            </sc-for>
+          </select>
+        </div>
+        <p style="font-size:13px;color:rgba(233,233,237,0.55);margin:0 0 17px">Conversão fiel ao original &mdash; texto, títulos e listas preservados.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 220px;gap:17px;align-items:start">
+          <div style="background:#232532;border-radius:8px;padding:24px 28px;box-shadow:0 0 0 1px #3f424d;max-height:600px;overflow:auto" dangerouslySetInnerHTML="{{ selectedMarkdownHtml }}"></div>
+          <div style="background:#232532;border-radius:8px;padding:12px;box-shadow:0 0 0 1px #3f424d">
+            <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#9184d9;margin-bottom:9px">Metadados</div>
+            <sc-for list="{{ selectedMeta }}" as="m" hint-placeholder-count="4">
+              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(233,233,237,0.08);font-size:12px">
+                <span style="color:rgba(233,233,237,0.55)">{{ m.k }}</span>
+                <span style="color:#e9e9ed">{{ m.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSplit }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;min-height:0;flex:1">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+          <h1 style="font-family:Inter,sans-serif;font-weight:500;font-size:26px;margin:0;letter-spacing:-0.015em">Comparar PDF &amp; Markdown</h1>
+          <select onChange="{{ onSelectDoc }}" value="{{ selectedId }}" style="background:#232532;color:#e9e9ed;border:1px solid rgba(233,233,237,0.16);border-radius:8px;padding:6px 10px;font-size:13px">
+            <sc-for list="{{ doneDocs }}" as="doc" hint-placeholder-count="3">
+              <option value="{{ doc.id }}">{{ doc.name }}</option>
+            </sc-for>
+          </select>
+        </div>
+        <p style="font-size:13px;color:rgba(233,233,237,0.55);margin:0 0 17px">Confira a fidelidade lado a lado antes de aprovar.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:17px;flex:1;min-height:500px">
+          <div style="background:#1b1e2c;border-radius:8px;box-shadow:0 0 0 1px #3f424d;padding:28px;overflow:auto">
+            <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(233,233,237,0.4);margin-bottom:14px">PDF original</div>
+            <div style="background:#fff;border-radius:2px;padding:28px 24px;color:#1a1a1a;font-size:11px;line-height:1.7;box-shadow:0 8px 24px rgba(0,0,0,0.4)" dangerouslySetInnerHTML="{{ pdfFacsimileHtml }}"></div>
+          </div>
+          <div style="background:#232532;border-radius:8px;padding:24px 28px;box-shadow:0 0 0 1px #3f424d;overflow:auto" dangerouslySetInnerHTML="{{ selectedMarkdownHtml }}"></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isTables }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+          <h1 style="font-family:Inter,sans-serif;font-weight:500;font-size:26px;margin:0;letter-spacing:-0.015em">Tabelas extraídas</h1>
+          <select onChange="{{ onSelectDoc }}" value="{{ selectedId }}" style="background:#232532;color:#e9e9ed;border:1px solid rgba(233,233,237,0.16);border-radius:8px;padding:6px 10px;font-size:13px">
+            <sc-for list="{{ doneDocs }}" as="doc" hint-placeholder-count="3">
+              <option value="{{ doc.id }}">{{ doc.name }}</option>
+            </sc-for>
+          </select>
+        </div>
+        <p style="font-size:13px;color:rgba(233,233,237,0.55);margin:0 0 17px">{{ selectedTableCountLabel }}</p>
+
+        <sc-for list="{{ selectedTables }}" as="t" hint-placeholder-count="2">
+          <div style="background:#232532;border-radius:8px;box-shadow:0 0 0 1px #3f424d;padding:17px;margin-bottom:17px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px">
+              <div style="font-size:15px;font-weight:500">{{ t.title }}</div>
+              <div style="display:flex;gap:6px">
+                <span onClick="{{ t.onDownloadJson }}" style="font-size:12px;color:#9184d9;border:1px solid #9184d9;border-radius:6px;padding:4px 9px;cursor:pointer">JSON</span>
+                <span onClick="{{ t.onDownloadCsv }}" style="font-size:12px;color:#9184d9;border:1px solid #9184d9;border-radius:6px;padding:4px 9px;cursor:pointer">CSV</span>
+                <span onClick="{{ t.onDownloadXlsx }}" style="font-size:12px;color:#9184d9;border:1px solid #9184d9;border-radius:6px;padding:4px 9px;cursor:pointer">Excel</span>
+              </div>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr>
+                  <sc-for list="{{ t.columns }}" as="c" hint-placeholder-count="4">
+                    <th style="text-align:left;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(233,233,237,0.6);padding:7px;border-bottom:1px solid rgba(233,233,237,0.16);font-weight:500">{{ c }}</th>
+                  </sc-for>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ t.rows }}" as="row" hint-placeholder-count="3">
+                  <tr style="border-bottom:1px solid rgba(233,233,237,0.08)">
+                    <sc-for list="{{ row }}" as="cell" hint-placeholder-count="4">
+                      <td style="padding:7px">{{ cell }}</td>
+                    </sc-for>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:560px">
+        <h1 style="font-family:Inter,sans-serif;font-weight:500;font-size:26px;margin:0 0 4px;letter-spacing:-0.015em">Configurações &amp; integrações</h1>
+        <p style="font-size:13px;color:rgba(233,233,237,0.55);margin:0 0 20px">Padrões de processamento e integrações futuras.</p>
+
+        <div style="background:#232532;border-radius:8px;box-shadow:0 0 0 1px #3f424d;padding:17px;margin-bottom:14px">
+          <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#9184d9;margin-bottom:12px">Processamento</div>
+          <div style="margin-bottom:14px">
+            <label style="display:block;font-size:12px;margin-bottom:5px;color:rgba(233,233,237,0.7)">Tamanho máximo de arquivo (MB)</label>
+            <input class="input" value="{{ maxFileSize }}" onChange="{{ onMaxFileSizeChange }}" style="width:120px;min-height:36px;padding:6px 10px;font-size:14px;color:#e9e9ed;background:#161826;border:1px solid rgba(233,233,237,0.16);border-radius:8px"></input>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px">Motor de OCR</div>
+              <div style="font-size:11px;color:rgba(233,233,237,0.5)">Aplicado a ~5% dos PDFs (escaneados)</div>
+            </div>
+            <span style="display:inline-flex;font-size:11px;padding:3px 10px;border-radius:6px;background:#423a6a;color:#f5f4ff">Surya (Marker)</span>
+          </div>
+        </div>
+
+        <div style="background:#232532;border-radius:8px;box-shadow:0 0 0 1px #3f424d;padding:17px;margin-bottom:14px">
+          <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#9184d9;margin-bottom:12px">Integrações</div>
+          <div style="margin-bottom:12px">
+            <label style="display:block;font-size:12px;margin-bottom:5px;color:rgba(233,233,237,0.7)">Vault do Obsidian (pasta de exportação)</label>
+            <input class="input" value="{{ obsidianPath }}" onChange="{{ onObsidianPathChange }}" placeholder="/Users/rodrigo/Obsidian/PlanejaDocs" style="width:100%;min-height:36px;padding:6px 10px;font-size:14px;color:#e9e9ed;background:#161826;border:1px solid rgba(233,233,237,0.16);border-radius:8px"></input>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;opacity:0.6">
+            <div>
+              <div style="font-size:13px">IA generativa (resumos, chunking)</div>
+              <div style="font-size:11px;color:rgba(233,233,237,0.5)">Planejado para pós-MVP</div>
+            </div>
+            <span style="display:inline-flex;font-size:11px;padding:3px 10px;border-radius:6px;background:#3f424d;color:#f3f5fe">Em breve</span>
+          </div>
+        </div>
+
+        <div onClick="{{ onSaveSettings }}" style="display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:#9184d9;border:1px solid #9184d9;border-radius:8px;padding:8px 16px;cursor:pointer" style-hover="background:rgba(145,132,217,0.12)">Salvar configurações</div>
+        <sc-if value="{{ settingsSaved }}" hint-placeholder-val="{{ false }}">
+          <span style="margin-left:10px;font-size:12px;color:rgba(233,233,237,0.55)">Salvo.</span>
+        </sc-if>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function bold(s){ return s.replace(/\*\*(.+?)\*\*/g,'<strong style="font-weight:600;color:#e9e9ed">$1</strong>'); }
+function mdToHtml(md){
+  const lines = md.split('\n');
+  let html = '', inList = false;
+  const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+  for (let raw of lines) {
+    const line = raw.trim();
+    if (!line) { closeList(); continue; }
+    if (line.startsWith('### ')) { closeList(); html += `<h3 style="font-size:16px;font-weight:500;margin:20px 0 8px;color:#e9e9ed">${bold(esc(line.slice(4)))}</h3>`; continue; }
+    if (line.startsWith('## ')) { closeList(); html += `<h2 style="font-size:19px;font-weight:500;margin:24px 0 8px;color:#e9e9ed">${bold(esc(line.slice(3)))}</h2>`; continue; }
+    if (line.startsWith('# ')) { closeList(); html += `<h1 style="font-size:23px;font-weight:500;margin:0 0 10px;color:#e9e9ed">${bold(esc(line.slice(2)))}</h1>`; continue; }
+    if (line.startsWith('- ')) { if (!inList) { html += '<ul style="margin:6px 0 12px;padding-left:20px">'; inList = true; } html += `<li style="font-size:13.5px;color:rgba(233,233,237,0.85);margin-bottom:4px">${bold(esc(line.slice(2)))}</li>`; continue; }
+    closeList();
+    html += `<p style="font-size:13.5px;line-height:1.7;color:rgba(233,233,237,0.85);margin:0 0 10px">${bold(esc(line))}</p>`;
+  }
+  closeList();
+  return html;
+}
+
+const STAGES_NATIVE = ['Detectando tipo de arquivo', 'Extraindo texto (PyMuPDF4LLM)', 'Extraindo tabelas (pdfplumber)', 'Finalizando'];
+const STAGES_SCANNED = ['Detectando tipo de arquivo', 'Aplicando OCR (Surya)', 'Extraindo tabelas (pdfplumber)', 'Finalizando'];
+
+const MD_SAMPLES = {
+  d1: `# Relatório de Gestão — 2º Quadrimestre 2026
+## Contrato de Gestão nº 014/2024 — SCMC
+
+Período de referência: maio a agosto de 2026. Execução física e financeira das metas pactuadas com a Unidade de Planejamento.
+
+### Execução financeira
+
+- Repasse mensal contratado: **R$ 2.840.000,00**
+- Despesa total no quadrimestre: **R$ 11.180.400,00**
+- Saldo remanescente: **R$ 179.600,00**
+
+### Metas quantitativas
+
+Indicadores de produção hospitalar e ambulatorial apurados via SIA/SIH, detalhados na tabela de metas extraída em anexo.
+
+### Ressalvas do parecer técnico
+
+- Glosa de 42 AIHs por documentação incompleta.
+- Ocupação média de leitos abaixo da meta em julho (81% vs. 85%).
+- Pendência de atualização cadastral no CNES para 2 unidades.`,
+  d2: `# Escala de Trabalho — Julho 2026
+## UPA Cillo — Equipe de Enfermagem
+
+Documento digitalizado, processado via OCR (Surya). Fidelidade de reconhecimento estimada em ~93%.
+
+### Turnos cobertos
+
+- Turno diurno: 06h às 18h, 4 profissionais por dia.
+- Turno noturno: 18h às 06h, 3 profissionais por dia.
+- Plantões de sobreaviso registrados para finais de semana.
+
+### Observações
+
+- Duas trocas de turno não constavam no documento original e foram inseridas manualmente pela chefia de enfermagem.`,
+};
+
+const TABLES_BY_DOC = {
+  d1: [
+    { title: 'Metas Quantitativas — Julho/2026', columns: ['Indicador', 'Meta', 'Realizado', '%'],
+      rows: [['Consultas ambulatoriais', '4.200', '4.417', '105%'], ['Cirurgias eletivas', '180', '162', '90%'], ['Exames SADT', '9.600', '9.988', '104%'], ['Internações (AIH)', '650', '598', '92%']] },
+    { title: 'Execução Financeira por Rubrica', columns: ['Rubrica', 'Orçado', 'Realizado'],
+      rows: [['Pessoal', 'R$ 1.520.000', 'R$ 1.498.300'], ['Materiais e insumos', 'R$ 610.000', 'R$ 642.900'], ['Serviços de terceiros', 'R$ 380.000', 'R$ 371.200'], ['Manutenção', 'R$ 190.000', 'R$ 174.500']] },
+  ],
+  d2: [
+    { title: 'Escala Consolidada — Julho/2026', columns: ['Profissional', 'Turno', 'Dias no mês'],
+      rows: [['Enf. A. Ferreira', 'Diurno', '18'], ['Téc. R. Alves', 'Noturno', '16'], ['Enf. C. Mendes', 'Sobreaviso', '4']] },
+  ],
+};
+
+const PDF_FACSIMILE = {
+  d1: `<div style="font-weight:700;font-size:14px;margin-bottom:10px">RELATÓRIO DE GESTÃO — 2º QUADRIMESTRE 2026</div>
+       <div style="margin-bottom:8px">Contrato de Gestão nº 014/2024 — SCMC</div>
+       <div style="margin-bottom:14px">Período: maio a agosto de 2026.</div>
+       <div style="font-weight:700;margin-bottom:6px">1. EXECUÇÃO FINANCEIRA</div>
+       <div style="margin-bottom:4px">Repasse mensal contratado: R$ 2.840.000,00</div>
+       <div style="margin-bottom:4px">Despesa total no quadrimestre: R$ 11.180.400,00</div>
+       <div style="margin-bottom:14px">Saldo remanescente: R$ 179.600,00</div>
+       <div style="font-weight:700;margin-bottom:6px">2. RESSALVAS DO PARECER TÉCNICO</div>
+       <div>Glosa de 42 AIHs por documentação incompleta...</div>`,
+  d2: `<div style="font-weight:700;font-size:14px;margin-bottom:10px">ESCALA DE TRABALHO — JULHO 2026</div>
+       <div style="margin-bottom:14px">UPA Cillo — Equipe de Enfermagem</div>
+       <div style="font-weight:700;margin-bottom:6px">TURNOS</div>
+       <div>Diurno 06h-18h / Noturno 18h-06h...</div>`,
+};
+
+function downloadBlob(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+function tableToCsv(t) {
+  const rows = [t.columns, ...t.rows];
+  return rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+}
+
+class Component extends DCLogic {
+  state = {
+    view: 'upload',
+    extractTables: true,
+    outputFormat: 'markdown',
+    selectedId: 'd1',
+    maxFileSize: '50',
+    obsidianPath: '',
+    settingsSaved: false,
+    nextId: 3,
+    documents: [
+      { id: 'd1', name: 'relatorio_gestao_2q2026.pdf', type: 'native', status: 'done', stageIdx: 3, pages: 77, tablesCount: 2, durationMs: 4200, ocr: null },
+      { id: 'd2', name: 'escala_upa_cillo_julho.pdf', type: 'scanned', status: 'done', stageIdx: 3, pages: 6, tablesCount: 1, durationMs: 31800, ocr: 'Surya' },
+      { id: 'd3', name: 'contrato_gestao_014_aditivo.pdf', type: 'native', status: 'error', stageIdx: 0, pages: null, tablesCount: null, durationMs: null, ocr: null, error: 'PDF2MD_001 — arquivo corrompido ou ilegível' },
+    ],
+  };
+
+  timers = [];
+  componentWillUnmount() { this.timers.forEach(clearTimeout); }
+
+  setView = (v) => this.setState({ view: v });
+
+  onFileChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const scanned = /escala/i.test(file.name);
+    const id = 'u' + this.state.nextId;
+    const doc = { id, name: file.name, type: scanned ? 'scanned' : 'native', status: 'processing', stageIdx: 0, pages: null, tablesCount: null, durationMs: null, ocr: scanned ? 'Surya' : null };
+    this.setState(s => ({ documents: [doc, ...s.documents], nextId: s.nextId + 1, view: 'queue' }));
+    this.advanceStage(id, scanned, 0);
+    e.target.value = '';
+  };
+
+  advanceStage = (id, scanned, idx) => {
+    const stages = scanned ? STAGES_SCANNED : STAGES_NATIVE;
+    const t = setTimeout(() => {
+      if (idx + 1 >= stages.length) {
+        this.setState(s => ({ documents: s.documents.map(d => d.id === id ? {
+          ...d, status: 'done', stageIdx: stages.length - 1,
+          pages: 4 + Math.floor(Math.random() * 80),
+          tablesCount: this.state.extractTables ? Math.floor(Math.random() * 4) : 0,
+          durationMs: scanned ? 18000 + Math.floor(Math.random() * 20000) : 1800 + Math.floor(Math.random() * 4000),
+        } : d) }));
+      } else {
+        this.setState(s => ({ documents: s.documents.map(d => d.id === id ? { ...d, stageIdx: idx + 1 } : d) }));
+        this.advanceStage(id, scanned, idx + 1);
+      }
+    }, scanned ? 900 : 650);
+    this.timers.push(t);
+  };
+
+  toggleExtractTables = () => this.setState(s => ({ extractTables: !s.extractTables }));
+  setOutputFormat = (f) => this.setState({ outputFormat: f });
+  selectDoc = (id) => this.setState({ selectedId: id });
+  onSelectDoc = (e) => this.setState({ selectedId: e.target.value });
+
+  onMaxFileSizeChange = (e) => this.setState({ maxFileSize: e.target.value });
+  onObsidianPathChange = (e) => this.setState({ obsidianPath: e.target.value });
+  onSaveSettings = () => { this.setState({ settingsSaved: true }); const t = setTimeout(() => this.setState({ settingsSaved: false }), 2200); this.timers.push(t); };
+
+  statusMeta(doc) {
+    if (doc.status === 'error') return { label: 'Erro', tagBg: '#4a2a2f', tagColor: '#f2c6cc' };
+    if (doc.status === 'processing') {
+      const stages = doc.type === 'scanned' ? STAGES_SCANNED : STAGES_NATIVE;
+      return { label: stages[doc.stageIdx], tagBg: '#423a6a', tagColor: '#f5f4ff' };
+    }
+    if (doc.status === 'queued') return { label: 'Na fila', tagBg: '#3f424d', tagColor: '#f3f5fe' };
+    return { label: 'Concluído', tagBg: '#2b2741', tagColor: '#d2cefd' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const nav = [
+      { key: 'upload', label: 'Novo documento' },
+      { key: 'queue', label: 'Fila de conversões' },
+      { key: 'markdown', label: 'Markdown' },
+      { key: 'split', label: 'Comparar PDF ↔ MD' },
+      { key: 'tables', label: 'Tabelas' },
+      { key: 'settings', label: 'Configurações' },
+    ];
+    const navItems = nav.map(n => ({
+      label: n.label,
+      color: s.view === n.key ? '#9184d9' : '#e9e9ed',
+      dotColor: s.view === n.key ? '#9184d9' : 'transparent',
+      onClick: () => this.setView(n.key),
+    }));
+
+    const documents = s.documents.map(doc => {
+      const meta = this.statusMeta(doc);
+      return {
+        id: doc.id, name: doc.name,
+        typeLabel: doc.type === 'scanned' ? 'Escaneado' : 'Nativo',
+        stageLabel: meta.label, tagBg: meta.tagBg, tagColor: meta.tagColor,
+        pagesLabel: doc.pages != null ? String(doc.pages) : '—',
+        tablesLabel: doc.tablesCount != null ? String(doc.tablesCount) : '—',
+        actionLabel: doc.status === 'done' ? 'Ver markdown' : (doc.status === 'error' ? doc.error : '...'),
+        onView: () => { if (doc.status === 'done') { this.selectDoc(doc.id); this.setView('markdown'); } },
+      };
+    });
+
+    const recentDocs = s.documents.slice(0, 3).map(doc => {
+      const meta = this.statusMeta(doc);
+      return {
+        name: doc.name, statusLabel: meta.label, tagBg: meta.tagBg, tagColor: meta.tagColor,
+        metaLine: doc.pages != null ? `${doc.pages} pág.` : (doc.type === 'scanned' ? 'OCR' : ''),
+        onClick: () => { if (doc.status === 'done') { this.selectDoc(doc.id); this.setView('markdown'); } else this.setView('queue'); },
+      };
+    });
+
+    const doneDocs = s.documents.filter(d => d.status === 'done').map(d => ({ id: d.id, name: d.name }));
+    const selectedDoc = s.documents.find(d => d.id === s.selectedId) || doneDocs[0];
+    const selectedId = selectedDoc ? selectedDoc.id : s.selectedId;
+    const selectedMarkdownHtml = { __html: mdToHtml(MD_SAMPLES[selectedId] || MD_SAMPLES.d1) };
+    const pdfFacsimileHtml = { __html: PDF_FACSIMILE[selectedId] || PDF_FACSIMILE.d1 };
+    const fullDoc = s.documents.find(d => d.id === selectedId);
+    const selectedMeta = fullDoc ? [
+      { k: 'Arquivo', v: fullDoc.name },
+      { k: 'Tipo', v: fullDoc.type === 'scanned' ? 'Escaneado (OCR)' : 'Nativo' },
+      { k: 'Páginas', v: String(fullDoc.pages) },
+      { k: 'Tabelas extraídas', v: String(fullDoc.tablesCount) },
+      { k: 'Tempo de processamento', v: fullDoc.durationMs ? `${(fullDoc.durationMs / 1000).toFixed(1)}s` : '—' },
+      ...(fullDoc.ocr ? [{ k: 'Motor OCR', v: fullDoc.ocr }] : []),
+    ] : [];
+
+    const rawTables = TABLES_BY_DOC[selectedId] || [];
+    const selectedTables = rawTables.map(t => ({
+      ...t,
+      onDownloadJson: () => downloadBlob(`${t.title}.json`, JSON.stringify(t.rows.map(r => Object.fromEntries(t.columns.map((c, i) => [c, r[i]]))), null, 2), 'application/json'),
+      onDownloadCsv: () => downloadBlob(`${t.title}.csv`, tableToCsv(t), 'text/csv'),
+      onDownloadXlsx: () => downloadBlob(`${t.title}.csv`, tableToCsv(t), 'application/vnd.ms-excel'),
+    }));
+
+    return {
+      navItems,
+      isUpload: s.view === 'upload', isQueue: s.view === 'queue', isMarkdown: s.view === 'markdown',
+      isSplit: s.view === 'split', isTables: s.view === 'tables', isSettings: s.view === 'settings',
+      onFileChange: this.onFileChange,
+      extractTablesBg: s.extractTables ? '#9184d9' : '#3f424d',
+      extractTablesDotLeft: s.extractTables ? '18px' : '2px',
+      toggleExtractTables: this.toggleExtractTables,
+      outputFormats: [
+        { label: 'Markdown', onClick: () => this.setOutputFormat('markdown'), color: s.outputFormat === 'markdown' ? '#9184d9' : '#e9e9ed', shadow: s.outputFormat === 'markdown' ? 'inset 0 0 0 1px #9184d9' : 'none' },
+        { label: 'JSON', onClick: () => this.setOutputFormat('json'), color: s.outputFormat === 'json' ? '#9184d9' : '#e9e9ed', shadow: s.outputFormat === 'json' ? 'inset 0 0 0 1px #9184d9' : 'none' },
+      ],
+      recentDocs, hasNoRecent: recentDocs.length === 0,
+      goToQueue: () => this.setView('queue'),
+      documents, queueCountLabel: `${s.documents.length} documento(s) — ${s.documents.filter(d => d.status === 'processing').length} em processamento`,
+      doneDocs, selectedId, onSelectDoc: (e) => this.selectDoc(e.target.value),
+      selectedMarkdownHtml, selectedMeta, pdfFacsimileHtml,
+      selectedTables, selectedTableCountLabel: `${selectedTables.length} tabela(s) extraída(s) deste documento`,
+      maxFileSize: s.maxFileSize, onMaxFileSizeChange: this.onMaxFileSizeChange,
+      obsidianPath: s.obsidianPath, onObsidianPathChange: this.onObsidianPathChange,
+      onSaveSettings: this.onSaveSettings, settingsSaved: s.settingsSaved,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

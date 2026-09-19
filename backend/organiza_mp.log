@@ -1,0 +1,107 @@
+[32m[INFO] 2026-09-13 10:53:34,769 [RapidOCR] base.py:22: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-09-13 10:53:34,816 [RapidOCR] download_file.py:60: File exists and is valid: C:\Users\rodri\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\rapidocr\models\ch_PP-OCRv4_det_mobile.onnx[0m
+[32m[INFO] 2026-09-13 10:53:34,816 [RapidOCR] main.py:57: Using C:\Users\rodri\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\rapidocr\models\ch_PP-OCRv4_det_mobile.onnx[0m
+[32m[INFO] 2026-09-13 10:53:34,899 [RapidOCR] base.py:22: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-09-13 10:53:34,913 [RapidOCR] download_file.py:60: File exists and is valid: C:\Users\rodri\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\rapidocr\models\ch_ppocr_mobile_v2.0_cls_mobile.onnx[0m
+[32m[INFO] 2026-09-13 10:53:34,914 [RapidOCR] main.py:57: Using C:\Users\rodri\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\rapidocr\models\ch_ppocr_mobile_v2.0_cls_mobile.onnx[0m
+[32m[INFO] 2026-09-13 10:53:34,965 [RapidOCR] base.py:22: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-09-13 10:53:35,003 [RapidOCR] download_file.py:60: File exists and is valid: C:\Users\rodri\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\rapidocr\models\latin_PP-OCRv3_rec_mobile.onnx[0m
+[32m[INFO] 2026-09-13 10:53:35,005 [RapidOCR] main.py:57: Using C:\Users\rodri\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\rapidocr\models\latin_PP-OCRv3_rec_mobile.onnx[0m
+Could not get FontBBox from font descriptor because None cannot be parsed as 4 floats
+90 PDFs, 2 nao-PDF (pulados)
+
+  PULADO (nao-PDF): Orientacao_Banco_de_Horas_Manual_Colaborador.docx -> 04 - Trabalhista e RH
+  PULADO (nao-PDF): RELATORIO_ABSENTEISMO_E_PRINCIPAIS_MOTIVOS.xlsx -> 04 - Trabalhista e RH
+
+[1/90] OK  35.0s tab=0   03 - Contratos :: 1_TERMO_ADITIVO_BENEFICIOS_UP_VT_.pdf
+[2/90] OK   3.4s tab=41  01 - Seguranca e Saude do Trabalho :: 1doc_andamento_AVCB.pdf
+[3/90] OK  65.8s tab=297 01 - Seguranca e Saude do Trabalho :: AET_SANTA_CASA_DE_MISERICORDIA_DE_CHAVANTES_HOSPITAL_MUNICIPAL_DE_AMERICANA_01_06_2026_assinado.pdf
+[4/90] OK  23.4s tab=113 01 - Seguranca e Saude do Trabalho :: AET_SANTA_CASA_DE_MISERICORDIA_DE_CHAVANTES_HOSPITAL_MUNICIPAL_DE_AMERICANA_UNACON_01_06_2026_assinado.pdf
+[5/90] OK  36.1s tab=175 01 - Seguranca e Saude do Trabalho :: AET_SANTA_CASA_DE_MISERICORDIA_DE_CHAVANTES_UPA_AMERICANA_SAO_JOSE_01_06_2026_assinado_1_.pdf
+[6/90] OK  22.7s tab=0   04 - Trabalhista e RH :: Agosto_Dimensionamento_Enfermagem_HMA.pdf
+[7/90] OK  15.8s tab=12  04 - Trabalhista e RH :: BANCO_DE_HORAS_HMA_AGOSTO.PDF
+[8/90] OK  15.1s tab=11  04 - Trabalhista e RH :: BANCO_DE_HORAS_HMA_JULHO.PDF
+[9/90] OK  15.8s tab=11  04 - Trabalhista e RH :: BANCO_DE_HORAS_HMA_JUNHO.PDF
+[10/90] OK   0.4s tab=1   04 - Trabalhista e RH :: BANCO_DE_HORAS_UNACON_AGOSTO.PDF
+[11/90] OK   0.4s tab=1   04 - Trabalhista e RH :: BANCO_DE_HORAS_UNACON_JULHO.PDF
+[12/90] OK   0.5s tab=1   04 - Trabalhista e RH :: BANCO_DE_HORAS_UNACON_JUNHO.PDF
+[13/90] OK   2.0s tab=2   04 - Trabalhista e RH :: BANCO_DE_HORAS_UPA_SAO_JOSE_AGOSTO.PDF
+[14/90] OK   2.3s tab=2   04 - Trabalhista e RH :: BANCO_DE_HORAS_UPA_SAO_JOSE_JULHO.PDF
+[15/90] OK   2.1s tab=2   04 - Trabalhista e RH :: BANCO_DE_HORAS_UPA_SAO_JOSE_JUNHO.PDF
+[16/90] OK   3.7s tab=2   03 - Contratos :: BENEFICIOS_UP_Gesta_o_de_Beneficios_Assinado_.pdf
+[17/90] OK   3.6s tab=2   03 - Contratos :: BENEFICIOS_UP_VT_Assinado_.pdf
+[18/90] OK   0.3s tab=0   05 - Empresa SOUL :: COMUNICADO_DE_ALTERACAO_DA_CCT.pdf
+[19/90] OK   0.4s tab=0   05 - Empresa SOUL :: COMUNICADO_VA_e_VR_HMA_e_UNACON.pdf
+[20/90] OK   1.5s tab=2   04 - Trabalhista e RH :: CONTRATADOS_ENFERMAGEM_HMA_2026.pdf
+[21/90] OK 617.4s tab=0   06 - Integral Nutri :: Contrato_de_trabalho_Funcionarios_Integral_Nutri.pdf
+[22/90] OK  12.4s tab=2   05 - Empresa SOUL :: Convencao_Coletiva_de_Trabalho_2026_e_2027_Empresa_Terceira_Soul.pdf
+[23/90] OK   7.4s tab=3   04 - Trabalhista e RH :: Documento_sobre_Reajustes_de_2026_compressed.pdf
+[24/90] OK 200.5s tab=0   05 - Empresa SOUL :: Escala_Soul_Hma_ME_S_06_2026.pdf
+[25/90] OK 156.4s tab=0   05 - Empresa SOUL :: Escala_Soul_Hma_ME_S_08.pdf
+[26/90] OK 256.3s tab=0   05 - Empresa SOUL :: Escala_Soul_Hospital_Me_s_07_2026.pdf
+[27/90] OK 181.5s tab=513 04 - Trabalhista e RH :: ESCALAS_AGOSTO_compressed.pdf
+[28/90] OK   6.4s tab=7   06 - Integral Nutri :: Escalas_Empresa_Terceira_Integral_Nutri.pdf
+[29/90] OK 222.5s tab=541 04 - Trabalhista e RH :: ESCALAS_JULHO_compressed.pdf
+[30/90] OK 190.3s tab=545 04 - Trabalhista e RH :: ESCALAS_JUNHO_compressed.pdf
+[31/90] OK 178.8s tab=0   01 - Seguranca e Saude do Trabalho :: Ficha_de_entrega_de_EPIS_assinadas.pdf
+[32/90] OK 193.6s tab=109 05 - Empresa SOUL :: Folha_Ponto_Empresa_Soul.pdf
+[33/90] ERRO FOLHA_PONTO_HMA_AGOSTO.PDF: PDF2MDError: Arquivo excede 500 páginas.
+[34/90] ERRO FOLHA_PONTO_HMA_JULHO.PDF: PDF2MDError: Arquivo excede 500 páginas.
+[35/90] ERRO FOLHA_PONTO_HMA_JUNHO.PDF: PDF2MDError: Arquivo excede 500 páginas.
+[36/90] OK  29.5s tab=64  04 - Trabalhista e RH :: FOLHA_PONTO_UNACON_AGOSTO.PDF
+[37/90] OK  25.7s tab=64  04 - Trabalhista e RH :: FOLHA_PONTO_UNACON_JULHO.PDF
+[38/90] OK  27.8s tab=64  04 - Trabalhista e RH :: FOLHA_PONTO_UNACON_JUNHO.PDF
+[39/90] OK 135.2s tab=360 04 - Trabalhista e RH :: FOLHA_PONTO_UPA_SAO_JOSE_AGOSTO.PDF
+[40/90] OK 127.0s tab=348 04 - Trabalhista e RH :: FOLHA_PONTO_UPA_SAO_JOSE_JULHO.PDF
+[41/90] OK 130.9s tab=336 04 - Trabalhista e RH :: FOLHA_PONTO_UPA_SAO_JOSE_JUNHO.PDF
+[42/90] OK   1.0s tab=0   04 - Trabalhista e RH :: HOLERITE_AUX_ADM_1_ANTES_DO_DISSIDIO.pdf
+[43/90] OK   1.3s tab=0   04 - Trabalhista e RH :: HOLERITE_AUX_ADM_1_APOS_DISSIDIO.pdf
+[44/90] OK   1.0s tab=0   04 - Trabalhista e RH :: HOLERITE_AUX_ADM_2_ANTES_DO_DISSIDIO.pdf
+[45/90] OK   1.1s tab=0   04 - Trabalhista e RH :: HOLERITE_AUX_ADM_2_APOS_DISSIDIO.pdf
+[46/90] OK   0.8s tab=0   04 - Trabalhista e RH :: HOLERITE_AUX_ADM_3_ANTES_DO_DISSIDIO.pdf
+[47/90] OK   1.0s tab=0   04 - Trabalhista e RH :: HOLERITE_AUX_ADM_3_APOS_DISSIDIO.pdf
+[48/90] OK   1.0s tab=0   04 - Trabalhista e RH :: HOLERITE_TECNICO_ENFERMAGEM_1_ANTES_DO_DISSIDIO.pdf
+[49/90] OK   1.0s tab=0   04 - Trabalhista e RH :: HOLERITE_TECNICO_ENFERMAGEM_2_ANTES_DO_DISSIDIO.pdf
+[50/90] OK   0.8s tab=0   04 - Trabalhista e RH :: HOLERITE_TECNICO_ENFERMAGEM_3_ANTES_DO_DISSIDIO.pdf
+[51/90] OK   1.1s tab=0   04 - Trabalhista e RH :: HOLERITE_TENICO_ENFERMAGEM_1_APOS_DISSIDIO.pdf
+[52/90] OK   1.2s tab=0   04 - Trabalhista e RH :: HOLERITE_TENICO_ENFERMAGEM_2_APOS_DISSIDIO.pdf
+[53/90] OK   0.9s tab=0   04 - Trabalhista e RH :: HOLERITE_TENICO_ENFERMAGEM_3_APOS_DISSIDIO.pdf
+[54/90] OK 730.8s tab=0   06 - Integral Nutri :: Holerites_Empresa_Terceira_Integral_Nutri.pdf
+[55/90] OK 373.1s tab=6925 05 - Empresa SOUL :: Holerites_Empresa_Terceira_Soul.pdf
+[56/90] OK  49.9s tab=0   04 - Trabalhista e RH :: Julho_Dimensionamento_Enfermagem_HMA.pdf
+[57/90] OK   8.8s tab=19  01 - Seguranca e Saude do Trabalho :: LAUDO_CENTRO_ONCOLOGICO_DE_AMERICANA_UNACOM_R2.pdf
+[58/90] OK  15.7s tab=31  01 - Seguranca e Saude do Trabalho :: LAUDO_HOSPITAL_MUNICIPAL_DE_AMERICANA_R2.pdf
+[59/90] OK  11.0s tab=22  01 - Seguranca e Saude do Trabalho :: LAUDO_UPA_SAO_JOSE_Unidade_de_Pronto_Atendimento_R2.pdf
+[60/90] OK   9.4s tab=8   01 - Seguranca e Saude do Trabalho :: LTCAT___AMERICANA_2024_assinado.pdf
+[61/90] OK  13.5s tab=38  01 - Seguranca e Saude do Trabalho :: LTCAT_Centro_Oncologico_de_Americana_UNACOM_R2.pdf
+[62/90] OK  76.4s tab=111 01 - Seguranca e Saude do Trabalho :: LTCAT_ECO_VALLORE_02_01_2026_A_01_01_2027.pdf
+[63/90] OK  24.7s tab=68  01 - Seguranca e Saude do Trabalho :: LTCAT_Hospital_Municipal_de_Americana_R2.pdf
+[64/90] OK  17.6s tab=43  01 - Seguranca e Saude do Trabalho :: LTCAT_UPA_Unidade_de_Pronto_Atendimento_R2.pdf
+[65/90] OK  30.1s tab=30  01 - Seguranca e Saude do Trabalho :: PCMSO_118691_HM.pdf
+[66/90] OK  17.6s tab=44  01 - Seguranca e Saude do Trabalho :: PCMSO_2024_Hospital_Municipal_Dr_Waldemar_Tebaldi_Americana.pdf
+[67/90] OK  20.8s tab=81  01 - Seguranca e Saude do Trabalho :: PCMSO_2025_MED_EXPRESS_SCMC_DEZEMBRO.pdf
+[68/90] OK   8.6s tab=7   01 - Seguranca e Saude do Trabalho :: PCMSO_AMERICANA_2024.pdf
+[69/90] OK  66.2s tab=84  01 - Seguranca e Saude do Trabalho :: PCMSO_ECO_VALLORE_02_01_2026_A_01_01_2027.pdf
+[70/90] OK  59.3s tab=205 01 - Seguranca e Saude do Trabalho :: PCMSO_REV_6_AIR_LIQUIDE_BRASIL_LTDA_CAMPINAS.pdf
+[71/90] OK  19.5s tab=77  01 - Seguranca e Saude do Trabalho :: PGR_2024_Hospital_Municipal_Dr_Waldemar_Tebaldi_Americana.pdf
+[72/90] OK  18.5s tab=71  01 - Seguranca e Saude do Trabalho :: PGR_2025_MED_EXPRESS_SCMC_DEZEMBRO_assinado.pdf
+[73/90] OK  70.5s tab=46  01 - Seguranca e Saude do Trabalho :: PGR_47930_HM.pdf
+[74/90] OK   9.8s tab=13  01 - Seguranca e Saude do Trabalho :: PGR_AMERICANA_2024.pdf
+[75/90] OK 107.2s tab=190 01 - Seguranca e Saude do Trabalho :: PGR_ECO_VALLORE_02_01_2026_A_01_01_2027.pdf
+[76/90] OK  39.7s tab=41  01 - Seguranca e Saude do Trabalho :: PGR_R3_Centro_Oncologico_de_Americana_UNACOM_2026.pdf
+[77/90] OK  49.2s tab=47  01 - Seguranca e Saude do Trabalho :: PGR_R4_UPA_SAO_JOSE_Unidade_de_Pronto_Atendimento_De_Americana_2026.pdf
+[78/90] OK  82.8s tab=79  01 - Seguranca e Saude do Trabalho :: PGR_R6_HMA_2026_Psicosocial.pdf
+[79/90] OK  58.9s tab=115 01 - Seguranca e Saude do Trabalho :: PGR_REV_6_AIR_LIQUIDE_BRASIL_LTDA_CAMPINAS.pdf
+[80/90] OK 780.3s tab=5   03 - Contratos :: Projeto_Hospital_e_P_S_assinado_e_certificado.pdf
+[81/90] OK  22.2s tab=2   03 - Contratos :: Projeto_Unacon_assinado_certificado.pdf
+[82/90] OK  59.4s tab=2   03 - Contratos :: Projeto_UPA_assinado_certificado.pdf
+[83/90] OK   6.9s tab=1   03 - Contratos :: Relatorio_Acessibilidade_UNACON.pdf
+[84/90] OK   7.7s tab=1   03 - Contratos :: Relatorio_acessibilidade_UPA_AV_DE_CILLO.pdf
+[85/90] OK  13.5s tab=1   03 - Contratos :: Relatorio_de_Acessibilidade_Hospital_Municipal.pdf
+[86/90] OK   5.4s tab=7   05 - Empresa SOUL :: Relatorio_Hora_Extra_Empresa_Terceirizada_Soul.pdf
+[87/90] OK   1.1s tab=0   03 - Contratos :: RRT_Hospital.pdf
+[88/90] OK   1.3s tab=0   03 - Contratos :: RRT_UNACON.pdf
+[89/90] OK   0.9s tab=0   03 - Contratos :: RRT_UPA.pdf
+[90/90] OK   9.0s tab=0   04 - Trabalhista e RH :: Setembro_Dimensionamento_Enfermagem_HMA.pdf
+
+Fim: 87 ok, 3 erros. Saida: E:\xampp\htdocs\planejadocs\output\mp
