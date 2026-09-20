@@ -15,6 +15,7 @@ from app.core.table_extractor import (
     tables_to_csv,
     tables_to_excel_bytes,
     tables_to_json,
+    unwrap_table_rows,
 )
 
 
@@ -168,6 +169,22 @@ def test_excel_numeric_typing(tmp_path):
     ws = wb.active
     assert ws["B2"].value == 38.0
     assert ws["B2"].number_format == "#,##0.00"
+
+
+def test_unwrap_table_rows():
+    raw_rows = [
+        ["Código", "Grupo", "Descrição", "Valor"],
+        ["01.01", "GRUPO A", "Procedimento com descrição longa", "38.00"],
+        ["", "CONTINUAÇÃO", "continuação da descrição aqui", ""],
+        ["01.02", "GRUPO B", "Outro procedimento", "55.00"],
+    ]
+    unwrapped = unwrap_table_rows(raw_rows)
+    assert len(unwrapped) == 3
+    assert unwrapped[1][0] == "01.01"
+    assert unwrapped[1][1] == "GRUPO A CONTINUAÇÃO"
+    assert unwrapped[1][2] == "Procedimento com descrição longa continuação da descrição aqui"
+    assert unwrapped[1][3] == "38.00"
+
 
 
 

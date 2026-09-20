@@ -95,6 +95,50 @@ def clean_table_financial_values(rows: list[list[str]]) -> list[list[str]]:
     return cleaned_rows
 
 
+def unwrap_table_rows(rows: list[list[str]]) -> list[list[str]]:
+    """Aglutina quebras de linha em tabelas sem grade, fundindo linhas órfãs ao registro anterior.
+
+    Uma linha é considerada órfã/continuação se a coluna inicial (código/identificador)
+    e a coluna final (valor/quantitativo) estiverem vazias, mas houver texto descritivo.
+    """
+    if not rows or len(rows) <= 1:
+        return rows
+
+    header = rows[0]
+    unwrapped = [header]
+
+    for row in rows[1:]:
+        if not row:
+            continue
+
+        first_cell = str(row[0] or "").strip()
+        last_cell = str(row[-1] or "").strip() if len(row) > 1 else ""
+        has_any_text = any(str(c or "").strip() for c in row)
+
+        if not has_any_text:
+            continue
+
+        is_continuation = (
+            len(unwrapped) > 1
+            and not first_cell
+            and not last_cell
+            and any(str(c or "").strip() for c in row[1:-1] if len(row) > 2)
+        )
+
+        if is_continuation:
+            prev = unwrapped[-1]
+            for idx in range(len(row)):
+                text = str(row[idx] or "").strip()
+                if text and idx < len(prev):
+                    prev_text = str(prev[idx] or "").strip()
+                    prev[idx] = f"{prev_text} {text}".strip() if prev_text else text
+        else:
+            unwrapped.append(list(row))
+
+    return unwrapped
+
+
+
 
 def extract_tables(path: str, engine: str = "pdfplumber") -> list[dict]:
     """Extrai todas as tabelas do PDF. Lista vazia se não houver tabela.
@@ -175,7 +219,7 @@ def consolidate_tables(tables: list[dict]) -> list[dict]:
                 consolidated.append({
                     "page": current["page"],
                     "table_index": current["table_index"],
-                    "rows": current["rows"],
+                    "rows": unwrap_table_rows(current["rows"]),
                 })
                 current = {
                     "page": page,
@@ -190,7 +234,7 @@ def consolidate_tables(tables: list[dict]) -> list[dict]:
         consolidated.append({
             "page": current["page"],
             "table_index": current["table_index"],
-            "rows": current["rows"],
+            "rows": unwrap_table_rows(current["rows"]),
         })
 
     return consolidated
