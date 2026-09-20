@@ -21,10 +21,10 @@ describe("convertPdf", () => {
     expect(sentForm(spy).get("table_engine")).toBe("pymupdf");
   });
 
-  it("usa pdfplumber por padrão", async () => {
+  it("usa pymupdf por padrão", async () => {
     const spy = mockFetch();
     await convertPdf(new File(["x"], "a.pdf"), { tema: "t" });
-    expect(sentForm(spy).get("table_engine")).toBe("pdfplumber");
+    expect(sentForm(spy).get("table_engine")).toBe("pymupdf");
   });
 });
 
@@ -41,6 +41,23 @@ describe("downloadTables", () => {
     const [url, opts] = spy.mock.calls[0];
     expect(url).toBe("/tables/download?format=excel");
     expect(JSON.parse(opts.body).tables).toHaveLength(1);
+    expect(anchor.download).toBe("doc.xlsx");
+    expect(anchor.click).toHaveBeenCalled();
+  });
+
+  it("faz POST das tabelas com formato csv_ptbr e baixa .pt_br.csv", async () => {
+    const spy = vi.fn().mockResolvedValue({ ok: true, blob: async () => new Blob() });
+    vi.stubGlobal("fetch", spy);
+    vi.stubGlobal("URL", { createObjectURL: () => "blob:x", revokeObjectURL: () => {} });
+    const anchor = { click: vi.fn() };
+    vi.stubGlobal("document", { createElement: () => anchor });
+
+    await downloadTables([{ rows: [["a"]] }], "csv_ptbr", "doc");
+
+    const [url, opts] = spy.mock.calls[0];
+    expect(url).toBe("/tables/download?format=csv_ptbr");
+    expect(JSON.parse(opts.body).tables).toHaveLength(1);
+    expect(anchor.download).toBe("doc.pt_br.csv");
     expect(anchor.click).toHaveBeenCalled();
   });
 });

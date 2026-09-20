@@ -23,19 +23,19 @@ const NAV = [
 ];
 
 const ENGINES = [
-  { value: "pdfplumber", label: "Rápido", hint: "pdfplumber · padrão" },
   {
     value: "pymupdf",
     label: "Alta fidelidade",
-    hint: "PyMuPDF · corrige espaçamento de números/texto",
+    hint: "PyMuPDF · padrão (rápido e sem quebra numérica)",
   },
+  { value: "pdfplumber", label: "Compatibilidade", hint: "pdfplumber · motor alternativo" },
 ];
 
 export default function App() {
   const [view, setView] = useState("upload");
   const [result, setResult] = useState(null); // { markdown, tables, metadata, name }
   const [extractTables, setExtractTables] = useState(true);
-  const [tableEngine, setTableEngine] = useState("pdfplumber");
+  const [tableEngine, setTableEngine] = useState("pymupdf");
   const [tema, setTema] = useState("");
   const [themes, setThemes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -513,8 +513,9 @@ function InlineDownloadBar({ tables, filename }) {
   const [busy, setBusy] = useState(null);
   const [err, setErr] = useState(null);
   const formats = [
-    { fmt: "excel", label: "Baixar .xlsx" },
-    { fmt: "csv", label: "Baixar .csv" },
+    { fmt: "excel", label: "Excel (.xlsx)" },
+    { fmt: "csv", label: "CSV (SQL / Banco)" },
+    { fmt: "csv_ptbr", label: "CSV (Excel BR)" },
   ];
 
   async function grab(fmt) {
@@ -755,9 +756,10 @@ function BrowseView() {
 function DownloadBar({ tema, name }) {
   const base = `/themes/${encodeURIComponent(tema)}/${encodeURIComponent(name)}/download`;
   const formats = [
+    { fmt: "excel", label: "Excel (.xlsx)" },
+    { fmt: "csv", label: "CSV (SQL / Banco)" },
+    { fmt: "csv_ptbr", label: "CSV (Excel BR)" },
     { fmt: "json", label: "JSON" },
-    { fmt: "csv", label: "CSV" },
-    { fmt: "excel", label: "Excel" },
   ];
   return (
     <div style={{ display: "flex", gap: 6, marginBottom: 14, alignItems: "center" }}>

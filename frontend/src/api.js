@@ -18,7 +18,7 @@ export function convertPdf(
     extractTables = true,
     outputFormat = "markdown",
     tema = "",
-    tableEngine = "pdfplumber",
+    tableEngine = "pymupdf",
   } = {},
 ) {
   const fd = new FormData();
@@ -39,7 +39,10 @@ export async function downloadTables(tables, format, filename) {
   });
   if (!resp.ok) throw new Error(`Erro ${resp.status}`);
   const blob = await resp.blob();
-  const ext = format === "excel" ? "xlsx" : "csv";
+  let ext = "csv";
+  if (format === "excel") ext = "xlsx";
+  else if (format === "csv_ptbr") ext = "pt_br.csv";
+  else if (format === "json") ext = "json";
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
