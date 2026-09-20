@@ -200,18 +200,40 @@ def tables_to_json(tables: list[dict]) -> str:
     return json.dumps(tables, ensure_ascii=False, indent=2)
 
 
-def tables_to_csv(tables: list[dict]) -> str:
-    """Concatena as tabelas em texto CSV (tabelas separadas por linha em branco)."""
+def tables_to_csv(tables: list[dict], format: str = "sql") -> str:
+    """Concatena as tabelas em texto CSV (tabelas separadas por linha em branco).
+
+    `format="sql"`: separador vírgula (,), números com ponto decimal (padrão SQL / banco de dados).
+    `format="pt_br"`: separador ponto-e-vírgula (;), números com vírgula decimal (padrão Excel Brasil).
+    """
     buf = io.StringIO()
-    writer = csv.writer(buf)
+    delimiter = ";" if format == "pt_br" else ","
+    writer = csv.writer(buf, delimiter=delimiter)
     for t in consolidate_tables(tables):
-        writer.writerows(t["rows"])
+        rows = t["rows"]
+        if format == "pt_br":
+            converted_rows = []
+            for r in rows:
+                new_row = []
+                for cell in r:
+                    cell_str = str(cell) if cell is not None else ""
+                    if re.match(r"^-?\d+\.\d{2}$", cell_str):
+                        new_row.append(cell_str.replace(".", ","))
+                    else:
+                        new_row.append(cell_str)
+                converted_rows.append(new_row)
+            writer.writerows(converted_rows)
+        else:
+            writer.writerows(rows)
         writer.writerow([])
     return buf.getvalue()
 
 
 def _write_excel(tables: list[dict], target) -> None:
-    """Escreve as tabelas em `target` (caminho ou buffer). 1 planilha por tabela."""
+    """Escreve as tabelas em `target` (caminho ou buffer). 1 planilha por tabela.
+
+    Células com valores decimais (ex: 38.00) são convertidas para float com máscara #,##0.00.
+    """
     import pandas as pd
 
     with pd.ExcelWriter(target, engine="openpyxl") as writer:
@@ -220,7 +242,21 @@ def _write_excel(tables: list[dict], target) -> None:
             if not rows:
                 continue
             df = pd.DataFrame(rows[1:], columns=rows[0])
-            df.to_excel(writer, sheet_name=f"tabela_{i + 1}", index=False)
+            sheet_name = f"tabela_{i + 1}"
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+            ws = writer.sheets[sheet_name]
+            for col_idx in range(1, len(rows[0]) + 1):
+                for row_idx in range(2, len(rows) + 1):
+                    cell = ws.cell(row=row_idx, column=col_idx)
+                    val = cell.value
+                    if isinstance(val, str) and re.match(r"^-?\d+\.\d{2}$", val):
+                        try:
+                            cell.value = float(val)
+                            cell.number_format = "#,##0.00"
+                        except (ValueError, TypeError):
+                            pass
+
 
 
 def save_excel(tables: list[dict], out_path: str) -> None:

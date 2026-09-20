@@ -24,7 +24,12 @@ from .core.table_extractor import (
 
 _DOWNLOAD_FORMATS = {
     "json": ("application/json", "tables.json", lambda t: tables_to_json(t).encode()),
-    "csv": ("text/csv; charset=utf-8", "tables.csv", lambda t: tables_to_csv(t).encode()),
+    "csv": ("text/csv; charset=utf-8", "tables.csv", lambda t: tables_to_csv(t, format="sql").encode("utf-8")),
+    "csv_ptbr": (
+        "text/csv; charset=utf-8",
+        "tables.pt_br.csv",
+        lambda t: tables_to_csv(t, format="pt_br").encode("utf-8-sig"),
+    ),
     "excel": (
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "tables.xlsx",

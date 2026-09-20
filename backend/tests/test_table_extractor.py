@@ -153,3 +153,22 @@ def test_clean_table_financial_values():
     assert cleaned[2][2] == "38.00"
 
 
+def test_tables_to_csv_pt_br():
+    t = [{"page": 1, "table_index": 0, "rows": [["Cod", "Valor"], ["01", "38.00"]]}]
+    csv_ptbr = tables_to_csv(t, format="pt_br")
+    assert "Cod;Valor" in csv_ptbr
+    assert "01;38,00" in csv_ptbr
+
+
+def test_excel_numeric_typing(tmp_path):
+    t = [{"page": 1, "table_index": 0, "rows": [["Cod", "Valor"], ["01", "38.00"]]}]
+    out = tmp_path / "typed.xlsx"
+    save_excel(t, str(out))
+    wb = load_workbook(out)
+    ws = wb.active
+    assert ws["B2"].value == 38.0
+    assert ws["B2"].number_format == "#,##0.00"
+
+
+
+

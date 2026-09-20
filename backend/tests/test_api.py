@@ -152,6 +152,7 @@ def _convert_table_pdf_com_tema(client, table_pdf, out_root, monkeypatch):
     [
         ("json", "application/json"),
         ("csv", "text/csv"),
+        ("csv_ptbr", "text/csv"),
         (
             "excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -185,6 +186,7 @@ def test_download_sem_tabelas_404(client, native_pdf, tmp_path, monkeypatch):
     "fmt, ctype",
     [
         ("csv", "text/csv"),
+        ("csv_ptbr", "text/csv"),
         (
             "excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

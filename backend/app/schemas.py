@@ -50,7 +50,7 @@ class ExtractionContent(BaseModel):
 
 class TablesResponse(BaseModel):
     tables: list[dict[str, Any]]
-    format: Literal["json", "csv", "excel"]
+    format: Literal["json", "csv", "csv_ptbr", "excel"]
     count: int
 
 
