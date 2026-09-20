@@ -24,6 +24,8 @@ class SavedOutput(BaseModel):
     markdown: str
     tables_json: str | None = None
     tables_csv: str | None = None
+    tables_pt_br_csv: str | None = None
+    tables_xlsx: str | None = None
 
 
 class ConvertResponse(BaseModel):

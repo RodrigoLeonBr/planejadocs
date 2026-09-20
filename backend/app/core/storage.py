@@ -8,7 +8,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from .table_extractor import tables_to_csv
+from .table_extractor import save_excel, tables_to_csv
 
 
 def slug_theme(tema: str) -> str:
@@ -75,8 +75,19 @@ def save_extraction(
             json.dumps(tables, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         csv_path = folder / f"{stem}.tables.csv"
-        csv_path.write_text(tables_to_csv(tables), encoding="utf-8")
+        csv_path.write_text(tables_to_csv(tables, format="sql"), encoding="utf-8")
+
+        csv_ptbr_path = folder / f"{stem}.tables.pt_br.csv"
+        csv_ptbr_path.write_text(
+            tables_to_csv(tables, format="pt_br"), encoding="utf-8-sig"
+        )
+
+        xlsx_path = folder / f"{stem}.tables.xlsx"
+        save_excel(tables, str(xlsx_path))
+
         out["tables_json"] = str(json_path)
         out["tables_csv"] = str(csv_path)
+        out["tables_pt_br_csv"] = str(csv_ptbr_path)
+        out["tables_xlsx"] = str(xlsx_path)
 
     return out

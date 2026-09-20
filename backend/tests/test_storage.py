@@ -1,5 +1,6 @@
 """Testes da persistência por tema (spec convert.md)."""
 import json
+from pathlib import Path
 
 from app.core.storage import (
     list_extractions,
@@ -70,3 +71,16 @@ def test_read_extraction_bloqueia_path_traversal(tmp_path):
     save_extraction(str(tmp_path), "Outros", "secret.pdf", "sensível", [])
     # traversal p/ outro tema é neutralizado -> não escapa da pasta do tema
     assert read_extraction(str(tmp_path), "Contratos", "../outros/secret") is None
+
+
+def test_save_extraction_saves_all_table_formats(tmp_path):
+    tables = [{"page": 1, "table_index": 0, "rows": [["Cod", "Valor"], ["01", "38.00"]]}]
+    out = save_extraction(str(tmp_path), "tema_teste", "doc.pdf", "# Markdown", tables)
+    dir_path = Path(out["dir"])
+    assert (dir_path / "doc.tables.csv").exists()
+    assert (dir_path / "doc.tables.pt_br.csv").exists()
+    assert (dir_path / "doc.tables.xlsx").exists()
+    assert (dir_path / "doc.tables.json").exists()
+    assert out["tables_pt_br_csv"] == str(dir_path / "doc.tables.pt_br.csv")
+    assert out["tables_xlsx"] == str(dir_path / "doc.tables.xlsx")
+
