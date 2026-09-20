@@ -247,3 +247,42 @@ def test_convert_encaminha_motor(client, table_pdf, monkeypatch):
         data={"table_engine": "pymupdf"},
     )
     assert visto["engine"] == "pymupdf"
+
+
+def test_convert_tables_default_engine_is_pymupdf(client, table_pdf, monkeypatch):
+    calls = []
+    import app.main as main_mod
+
+    orig_extract = main_mod.extract_tables
+
+    def mock_extract(path, engine="pymupdf"):
+        calls.append(engine)
+        return orig_extract(path, engine=engine)
+
+    monkeypatch.setattr(main_mod, "extract_tables", mock_extract)
+    with open(table_pdf, "rb") as f:
+        res = client.post(
+            "/convert/tables", files={"file": ("table.pdf", f, "application/pdf")}
+        )
+    assert res.status_code == 200
+    assert calls[0] == "pymupdf"
+
+
+def test_convert_default_engine_is_pymupdf(client, table_pdf, monkeypatch):
+    calls = []
+    from app.core import output
+
+    orig_extract = output.extract_tables
+
+    def mock_extract(path, engine="pymupdf"):
+        calls.append(engine)
+        return orig_extract(path, engine=engine)
+
+    monkeypatch.setattr(output, "extract_tables", mock_extract)
+    with open(table_pdf, "rb") as f:
+        res = client.post(
+            "/convert", files={"file": ("table.pdf", f, "application/pdf")}
+        )
+    assert res.status_code == 200
+    assert calls[0] == "pymupdf"
+

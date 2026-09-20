@@ -86,13 +86,13 @@ async def convert_pdf(
     output_format: str = Form("markdown"),
     tema: str | None = Form(None),
     output_dir: str | None = Form(None),
-    table_engine: str = Form("pdfplumber"),
+    table_engine: str = Form("pymupdf"),
 ):
     """Converte um PDF para Markdown. Não-PDF -> PDF2MD_005, >50MB -> PDF2MD_002.
 
     Se `tema` for informado, persiste a extração em <output_dir ou
     PDF2MD_OUTPUT_DIR>/<tema>/. `output_dir` grava na pasta de outro projeto.
-    `table_engine`: `pdfplumber` (padrão) ou `pymupdf` (alta fidelidade).
+    `table_engine`: `pymupdf` (padrão de alta fidelidade) ou `pdfplumber`.
     """
     path = _save_temp(await file.read(), file.filename)
     try:
@@ -179,9 +179,9 @@ async def download_tables_inline(
 async def convert_tables(
     file: UploadFile = File(...),
     format: str = Form("json"),
-    table_engine: str = Form("pdfplumber"),
+    table_engine: str = Form("pymupdf"),
 ):
-    """Extrai apenas as tabelas de um PDF. `table_engine`: pdfplumber|pymupdf."""
+    """Extrai apenas as tabelas de um PDF. `table_engine`: pymupdf (padrão)|pdfplumber."""
     path = _save_temp(await file.read(), file.filename)
     try:
         tables = extract_tables(path, engine=table_engine)
