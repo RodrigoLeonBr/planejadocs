@@ -8,7 +8,9 @@ from openpyxl import load_workbook
 
 from app.core.table_extractor import (
     _normalize_cell,
+    clean_table_financial_values,
     extract_tables,
+    parse_financial_value,
     save_excel,
     tables_to_csv,
     tables_to_excel_bytes,
@@ -106,3 +108,48 @@ def test_save_excel(table_pdf, tmp_path):
     ws = wb.active
     assert ws["A1"].value == "Nome"
     assert ws["B3"].value == "200"
+
+
+def test_consolidate_multi_page_tables(tmp_path):
+    # Simula 2 páginas da mesma tabela (página 2 continua sem cabeçalho)
+    t1 = {"page": 1, "table_index": 0, "rows": [["Cod", "Nome"], ["01", "Item A"]]}
+    t2 = {"page": 2, "table_index": 0, "rows": [["02", "Item B"], ["03", "Item C"]]}
+    
+    csv_text = tables_to_csv([t1, t2])
+    assert "Cod,Nome" in csv_text
+    assert "01,Item A" in csv_text
+    assert "02,Item B" in csv_text
+    assert "03,Item C" in csv_text
+    assert csv_text.count("Cod,Nome") == 1
+
+    out = tmp_path / "multi.xlsx"
+    save_excel([t1, t2], str(out))
+    wb = load_workbook(out)
+    assert len(wb.sheetnames) == 1
+    ws = wb.active
+    assert ws["A1"].value == "Cod"
+    assert ws["A2"].value == "01"
+    assert ws["A3"].value == "02"
+    assert ws["A4"].value == "03"
+
+
+def test_parse_financial_value():
+    assert parse_financial_value("R$ 33,34") == "33.34"
+    assert parse_financial_value("3 8 , 0 0") == "38.00"
+    assert parse_financial_value("1 . 1 0 0,00") == "1100.00"
+    assert parse_financial_value("4 . 6 5 0 , 0 5") == "4650.05"
+    assert parse_financial_value("3 1 3 ,44") == "313.44"
+    assert parse_financial_value("150,00") == "150.00"
+    assert parse_financial_value(None) == ""
+    assert parse_financial_value("") == ""
+
+
+def test_clean_table_financial_values():
+    header = ["Código", "Procedimento", "Valor"]
+    r1 = ["01", "Consulta", "R$ 33,34"]
+    r2 = ["02", "Exame", "3 8 , 0 0"]
+    cleaned = clean_table_financial_values([header, r1, r2])
+    assert cleaned[1][2] == "33.34"
+    assert cleaned[2][2] == "38.00"
+
+

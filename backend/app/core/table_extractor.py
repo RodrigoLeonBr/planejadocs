@@ -2,6 +2,7 @@
 import csv
 import io
 import json
+import re
 
 import pdfplumber
 
@@ -9,6 +10,90 @@ import pdfplumber
 def _normalize_cell(text: str | None) -> str:
     """Colapsa runs de espaço/quebra em um único espaço e apara as bordas."""
     return " ".join((text or "").split())
+
+
+def parse_financial_value(val_str: str | None) -> str:
+    """Extrai valor numérico financeiro com 2 casas decimais e separador ponto (ex: '38.00').
+
+    Remove prefixos monetários (R$, $), espaços entre dígitos ('3 8 , 0 0' -> 38.00)
+    e normaliza separadores decimais e de milhares. Retorna '' se nulo ou inválido.
+    """
+    if val_str is None:
+        return ""
+    s = str(val_str).strip()
+    if not s:
+        return ""
+
+    # Remove prefixo monetário
+    s = re.sub(r"^[R$r$\s]+", "", s).strip()
+    s = re.sub(r"[R$r$]+", "", s).strip()
+    # Elimina espaços entre dígitos ou pontuação (ex: '3 8 , 0 0' -> '38,00', '1 . 1 0 0' -> '1.100')
+    s = re.sub(r"(?<=[0-9.,])\s+(?=[0-9.,])", "", s).strip()
+    if not s:
+        return ""
+
+    # Caso com vírgula decimal brasileira: '1.100,00' ou '38,00' ou '3 1 3 ,44'
+    if "," in s:
+        s = s.replace(".", "").replace(",", ".")
+    elif "." in s:
+        parts = s.split(".")
+        if len(parts) > 2:
+            s = "".join(parts[:-1]) + "." + parts[-1]
+
+    # Remove quaisquer caracteres restantes estranhos
+    s = re.sub(r"[^\d.-]", "", s)
+    if not s or s == "-" or s == ".":
+        return ""
+
+    try:
+        fval = float(s)
+        return f"{fval:.2f}"
+    except ValueError:
+        return ""
+
+
+def clean_table_financial_values(rows: list[list[str]]) -> list[list[str]]:
+    """Identifica colunas de valores monetários e padroniza seus valores com 2 casas decimais."""
+    if not rows or len(rows) < 2:
+        return rows
+
+    header = rows[0]
+    financial_keywords = {"VALOR", "TOTAL", "PREÇO", "PRECO", "CUSTO", "TETO", "REPASSE", "UNITÁRIO", "UNITARIO"}
+    financial_col_indices = set()
+
+    for idx, col_name in enumerate(header):
+        normalized_name = (col_name or "").upper().strip()
+        if any(kw in normalized_name for kw in financial_keywords):
+            financial_col_indices.add(idx)
+
+    if not financial_col_indices:
+        for idx in range(len(header)):
+            matches = 0
+            non_empty = 0
+            for r in rows[1:]:
+                if idx < len(r) and r[idx].strip():
+                    non_empty += 1
+                    cleaned = parse_financial_value(r[idx])
+                    if cleaned:
+                        matches += 1
+            if non_empty > 0 and (matches / non_empty) >= 0.7:
+                financial_col_indices.add(idx)
+
+    if not financial_col_indices:
+        return rows
+
+    cleaned_rows = [header]
+    for row in rows[1:]:
+        new_row = list(row)
+        for idx in financial_col_indices:
+            if idx < len(new_row):
+                parsed = parse_financial_value(new_row[idx])
+                if parsed:
+                    new_row[idx] = parsed
+        cleaned_rows.append(new_row)
+
+    return cleaned_rows
+
 
 
 def extract_tables(path: str, engine: str = "pdfplumber") -> list[dict]:
@@ -30,10 +115,10 @@ def extract_tables(path: str, engine: str = "pdfplumber") -> list[dict]:
 
 
 def _extract_pymupdf(path: str) -> list[dict]:
-    """Alta fidelidade: texto de cada célula pelo bbox (`get_textbox`) + normalização.
+    """Alta fidelidade: extração de tabelas via PyMuPDF com normalização de espaçamento.
 
     Evita o glifo-a-glifo espaçado que o pdfplumber gera em planilhas com
-    letter-spacing largo (ex.: `3 8 , 0 0` → `38,00`).
+    letter-spacing largo (ex.: `3 8 , 0 0` → `38,00`) e sobreposição vertical de células.
     """
     import pymupdf
 
@@ -42,12 +127,73 @@ def _extract_pymupdf(path: str) -> list[dict]:
         for i, page in enumerate(doc):
             for j, table in enumerate(page.find_tables().tables):
                 rows = [
-                    [_normalize_cell(page.get_textbox(cb) if cb else "") for cb in row.cells]
-                    for row in table.rows
+                    [_normalize_cell(cell) for cell in row]
+                    for row in table.extract()
                 ]
                 if rows:
                     result.append({"page": i + 1, "table_index": j, "rows": rows})
     return result
+
+
+def consolidate_tables(tables: list[dict]) -> list[dict]:
+    """Consolida tabelas contínuas de páginas consecutivas que possuem a mesma estrutura."""
+    if not tables:
+        return []
+
+    consolidated = []
+    current = None
+
+    for t in tables:
+        rows = t["rows"]
+        if not rows:
+            continue
+
+        col_count = len(rows[0])
+        page = t["page"]
+
+        if current is None:
+            current = {
+                "page": page,
+                "table_index": t["table_index"],
+                "header": rows[0],
+                "rows": [r for r in rows],
+                "last_page": page,
+                "col_count": col_count,
+            }
+        else:
+            is_consecutive = (page == current["last_page"] + 1) or (page == current["last_page"])
+            same_cols = (col_count == current["col_count"])
+
+            if is_consecutive and same_cols:
+                if rows[0] == current["header"]:
+                    data_rows = rows[1:]
+                else:
+                    data_rows = rows
+                current["rows"].extend(data_rows)
+                current["last_page"] = page
+            else:
+                consolidated.append({
+                    "page": current["page"],
+                    "table_index": current["table_index"],
+                    "rows": current["rows"],
+                })
+                current = {
+                    "page": page,
+                    "table_index": t["table_index"],
+                    "header": rows[0],
+                    "rows": [r for r in rows],
+                    "last_page": page,
+                    "col_count": col_count,
+                }
+
+    if current is not None:
+        consolidated.append({
+            "page": current["page"],
+            "table_index": current["table_index"],
+            "rows": current["rows"],
+        })
+
+    return consolidated
 
 
 def tables_to_json(tables: list[dict]) -> str:
@@ -58,7 +204,7 @@ def tables_to_csv(tables: list[dict]) -> str:
     """Concatena as tabelas em texto CSV (tabelas separadas por linha em branco)."""
     buf = io.StringIO()
     writer = csv.writer(buf)
-    for t in tables:
+    for t in consolidate_tables(tables):
         writer.writerows(t["rows"])
         writer.writerow([])
     return buf.getvalue()
@@ -69,7 +215,7 @@ def _write_excel(tables: list[dict], target) -> None:
     import pandas as pd
 
     with pd.ExcelWriter(target, engine="openpyxl") as writer:
-        for i, t in enumerate(tables):
+        for i, t in enumerate(consolidate_tables(tables)):
             rows = t["rows"]
             if not rows:
                 continue
