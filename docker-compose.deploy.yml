@@ -1,0 +1,22 @@
+# Compose para servidor de DESTINO (fraco), sem build.
+# Usa as imagens já compiladas e carregadas via `docker load`.
+# Subir com:  docker compose -f docker-compose.deploy.yml up -d
+services:
+  backend:
+    image: planejadocs-backend:latest
+    environment:
+      PDF2MD_OUTPUT_DIR: /data/output
+    volumes:
+      - output:/data/output
+    restart: unless-stopped
+
+  frontend:
+    image: planejadocs-frontend:latest
+    ports:
+      - "8082:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  output:

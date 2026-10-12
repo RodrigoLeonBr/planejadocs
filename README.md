@@ -126,6 +126,69 @@ cd backend && uvicorn app.main:app --reload
 cd frontend && npm run dev
 ```
 
+## Docker (produção / deploy)
+
+Em produção o nginx serve o build estático do frontend e faz proxy das rotas da
+API (`/convert`, `/health`, `/themes`, `/tables`) para o container backend.
+
+**Arquivos:**
+
+| Arquivo | Função |
+|---|---|
+| `backend/Dockerfile` | Imagem do backend (Python 3.13 + uvicorn). |
+| `frontend/Dockerfile` | Build do Vite → imagem nginx servindo o estático. |
+| `frontend/nginx.conf` | Serve o SPA + proxy das rotas da API para `backend:8000`. |
+| `docker-compose.yml` | **Build + run** (máquina com o código). |
+| `docker-compose.deploy.yml` | **Só run** de imagens prontas (servidor de destino). |
+
+Frontend em `http://localhost:8082`, backend direto em `http://localhost:8000`
+(8080/8081 costumam estar ocupadas pelo XAMPP). As extrações persistem no volume
+Docker `output` (`PDF2MD_OUTPUT_DIR=/data/output`) e sobrevivem a `down`/`up`;
+somem só com `docker compose down -v`.
+
+### Subir / atualizar (máquina com o código)
+
+```bash
+docker compose up -d --build       # primeira vez ou após mudar código/deps
+# atualizar com código novo:
+git pull && docker compose up -d --build
+
+docker compose logs -f backend     # logs
+docker compose ps                  # status
+docker compose down                # para (mantém o volume output)
+```
+
+### Deploy em outro servidor (inclusive fraco, só a imagem pronta)
+
+O servidor de destino precisa só de **Docker + Docker Compose** — nada de Python,
+Node ou código-fonte. A compilação acontece na sua máquina e vai embutida na imagem.
+
+> ⚠️ A imagem é compilada para a arquitetura da máquina de build (normalmente
+> `linux/amd64`). Destino ARM (VPS barato, Raspberry Pi) → compilar com
+> `docker build --platform linux/arm64` ou usar registry multi-arch.
+
+**Opção A — arquivo `.tar` (sem internet no destino):**
+
+```bash
+# 1. máquina de build: compila e empacota as duas imagens
+docker compose build
+docker save planejadocs-backend:latest planejadocs-frontend:latest -o planejadocs-images.tar
+
+# 2. copiar para o servidor (scp/pendrive): planejadocs-images.tar + docker-compose.deploy.yml
+
+# 3. no servidor de destino:
+docker load -i planejadocs-images.tar
+docker compose -f docker-compose.deploy.yml up -d
+```
+
+App em `http://<ip-do-servidor>:8082`. **Atualizar:** repetir 1–3 com o `.tar`
+novo (o `docker load` sobrescreve a tag `:latest`); o volume `output` é preservado.
+
+**Opção B — registry (destino com internet):** `docker push` das imagens para um
+registry, ajustar os campos `image:` do `docker-compose.deploy.yml` para
+`<registry>/planejadocs-*:latest`, e no servidor rodar
+`docker compose -f docker-compose.deploy.yml pull && ... up -d`.
+
 ## Uso da API
 ```bash
 # Converter PDF

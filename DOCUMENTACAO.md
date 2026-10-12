@@ -182,8 +182,9 @@ python3 -m ruff check .
 - O frontend possui preenchimento assistido com histórico dos temas já criados (`GET /themes`).
 
 ### 2. Motores de Tabela Disponíveis
-- **`pdfplumber` (Padrão / Rápido):** Ótimo para a grande maioria das tabelas convencionais.
-- **`pymupdf` (Alta Fidelidade):** Extrai células por bounding box (`get_textbox`) e normaliza espaçamentos. Imprescindível para planilhas com letter-spacing largo (evita que números como `38,00` virem `3 8 , 0 0`).
+- **`pdfplumber` (Padrão / Rápido):** Ótimo para tabelas simples e convencionais.
+- **`pymupdf` (Alta Fidelidade):** Extrai células via `table.extract()` com normalização de espaçamentos. Imprescindível para planilhas com letter-spacing largo (evita que números como `38,00` virem `3 8 , 0 0`) e elimina sangramento/duplicação entre linhas consecutivas.
+- **Consolidação Multi-Páginas:** Suporte nativo à fusão de tabelas contínuas em múltiplas páginas em uma única estrutura coesa em `.csv` e `.xlsx`, evitando perda da primeira linha como cabeçalho ou fragmentação desnecessária.
 
 ### 3. OCR Inteligente para Documentos Escaneados
 - Documentos nativos são processados via `PyMuPDF4LLM` com `use_ocr=OCRMode.NEVER` para máxima velocidade.
@@ -208,4 +209,6 @@ python3 -m ruff check .
 | Data | Responsável | Descrição da Alteração |
 |---|---|---|
 | 18/09/2026 | Antigravity | • Correção no `run.ps1` com auto-detecção de `python3` para compatibilidade no Windows.<br>• Criação do `DOCUMENTACAO.md` como fonte única de verdade.<br>• Validação completa de 69 testes no backend e 8 no frontend. |
+| 19/09/2026 | Antigravity | • Correção no motor PyMuPDF (`table_extractor.py`) eliminando o bug de sobreposição vertical de células.<br>• Implementação de consolidação de tabelas contínuas multi-páginas para exportação de `.csv` e `.xlsx` íntegros e sem perda de linhas.<br>• Conversão de alta fidelidade de `tabela de serviços 12-2024 (1).pdf` com 1.616 procedimentos 100% conferidos e validados. |
+| 11/10/2026 | Claude | • Dockerização: `backend/Dockerfile`, `frontend/Dockerfile` (nginx + proxy da API), `docker-compose.yml` (build+run) e `docker-compose.deploy.yml` (run de imagem pronta).<br>• Persistência das extrações em volume Docker `output`.<br>• README com instruções de atualização do Docker e de deploy em outro servidor via `docker save`/`docker load` (inclusive máquina fraca, sem build no destino). |
 

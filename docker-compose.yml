@@ -1,0 +1,21 @@
+services:
+  backend:
+    build: ./backend
+    image: planejadocs-backend:latest
+    environment:
+      PDF2MD_OUTPUT_DIR: /data/output
+    volumes:
+      - output:/data/output
+    ports:
+      - "8000:8000"   # acesso direto à API/MCP se precisar
+
+  frontend:
+    build: ./frontend
+    image: planejadocs-frontend:latest
+    ports:
+      - "8082:80"
+    depends_on:
+      - backend
+
+volumes:
+  output:
