@@ -4,16 +4,18 @@ services:
     image: planejadocs-backend:latest
     environment:
       PDF2MD_OUTPUT_DIR: /data/output
+      PDF2MD_MAX_PAGES: "3000"          # RAs de prestacao de contas passam de 500 pag
+      PDF2MD_MAX_FILE_SIZE_MB: "300"     # books/RAs grandes
     volumes:
       - output:/data/output
     ports:
-      - "8000:8000"   # acesso direto à API/MCP se precisar
+      - "9000:8000"   # acesso direto à API/MCP se precisar (host 9000 p/ evitar XAMPP 8080/8081)
 
   frontend:
     build: ./frontend
     image: planejadocs-frontend:latest
     ports:
-      - "8082:80"
+      - "9080:80"
     depends_on:
       - backend
 

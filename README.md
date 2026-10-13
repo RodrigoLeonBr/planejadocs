@@ -141,8 +141,8 @@ API (`/convert`, `/health`, `/themes`, `/tables`) para o container backend.
 | `docker-compose.yml` | **Build + run** (máquina com o código). |
 | `docker-compose.deploy.yml` | **Só run** de imagens prontas (servidor de destino). |
 
-Frontend em `http://localhost:8082`, backend direto em `http://localhost:8000`
-(8080/8081 costumam estar ocupadas pelo XAMPP). As extrações persistem no volume
+Frontend em `http://localhost:9080`, backend direto em `http://localhost:9000`
+(8080/8081 costumam estar ocupadas pelo XAMPP; 9080/9000 ficam livres). As extrações persistem no volume
 Docker `output` (`PDF2MD_OUTPUT_DIR=/data/output`) e sobrevivem a `down`/`up`;
 somem só com `docker compose down -v`.
 
@@ -181,7 +181,7 @@ docker load -i planejadocs-images.tar
 docker compose -f docker-compose.deploy.yml up -d
 ```
 
-App em `http://<ip-do-servidor>:8082`. **Atualizar:** repetir 1–3 com o `.tar`
+App em `http://<ip-do-servidor>:9080`. **Atualizar:** repetir 1–3 com o `.tar`
 novo (o `docker load` sobrescreve a tag `:latest`); o volume `output` é preservado.
 
 **Opção B — registry (destino com internet):** `docker push` das imagens para um

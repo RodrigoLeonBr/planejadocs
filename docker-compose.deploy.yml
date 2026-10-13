@@ -13,7 +13,7 @@ services:
   frontend:
     image: planejadocs-frontend:latest
     ports:
-      - "8082:80"
+      - "9080:80"
     depends_on:
       - backend
     restart: unless-stopped
