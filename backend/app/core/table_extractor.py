@@ -20,12 +20,15 @@ def parse_financial_value(val_str: str | None) -> str:
     """
     if val_str is None:
         return ""
-    s = str(val_str).strip()
-    if not s:
+    raw = str(val_str).strip()
+    if not raw:
         return ""
 
+    if raw.isdigit() and " " not in raw:
+        return raw
+
     # Remove prefixo monetário
-    s = re.sub(r"^[R$r$\s]+", "", s).strip()
+    s = re.sub(r"^[R$r$\s]+", "", raw).strip()
     s = re.sub(r"[R$r$]+", "", s).strip()
     # Elimina espaços entre dígitos ou pontuação (ex: '3 8 , 0 0' -> '38,00', '1 . 1 0 0' -> '1.100')
     s = re.sub(r"(?<=[0-9.,])\s+(?=[0-9.,])", "", s).strip()
@@ -140,29 +143,78 @@ def unwrap_table_rows(rows: list[list[str]]) -> list[list[str]]:
 
 
 
-def extract_tables(path: str, engine: str = "pdfplumber") -> list[dict]:
+def extract_tables(path: str, engine: str = "pymupdf") -> list[dict]:
     """Extrai todas as tabelas do PDF. Lista vazia se não houver tabela.
 
     Cada item: {"page": int (1-based), "table_index": int, "rows": list[list]}.
-    `engine="pymupdf"` = alta fidelidade (célula via bbox + normalização de
-    espaçamento); qualquer outro valor cai no padrão `pdfplumber`.
+    `engine="pymupdf"` (ou valor inválido) = padrão de alta fidelidade; realiza
+    fallback automático para `pdfplumber` se nenhuma tabela for detectada (ex.: sem linhas vetoriais).
+    `engine="pdfplumber"` = força uso do pdfplumber.
     """
-    if engine == "pymupdf":
-        return _extract_pymupdf(path)
+    if engine == "pdfplumber":
+        return _extract_pdfplumber(path)
+
+    tables = _extract_pymupdf(path)
+    if tables:
+        return tables
+    return _extract_pdfplumber(path)
+
+
+def _is_plausible_table(rows: list[list[str]]) -> bool:
+    """Verifica se uma tabela detectada via heurística possui características tabulares reais.
+
+    Evita falsos-positivos em páginas de texto corrido (parágrafos) onde linhas de texto
+    poderiam ser equivocadamente agrupadas como colunas.
+    """
+    if not rows or len(rows) < 2:
+        return False
+
+    header_text = " ".join(str(c or "").upper() for c in rows[0])
+    tabular_keywords = {
+        "CODIGO", "CÓDIGO", "DESCRICAO", "DESCRIÇÃO", "VALOR", "PRECO", "PREÇO",
+        "ITEM", "TOTAL", "GRUPO", "PROCEDIMENTO", "SERVICO", "SERVIÇO", "NOME",
+        "ESPECIFICAÇÃO", "ESPECIFICACAO", "UNIDADE", "QUANTIDADE", "QTD",
+    }
+    if any(kw in header_text for kw in tabular_keywords):
+        return True
+
+    cols = len(rows[0])
+    if cols >= 2 and len(rows) > 3:
+        for col_idx in range(cols):
+            non_empty = 0
+            num_count = 0
+            for r in rows[1:]:
+                if col_idx < len(r) and r[col_idx].strip():
+                    non_empty += 1
+                    if parse_financial_value(r[col_idx]) or re.match(r"^\d+[\.\-\d]*$", r[col_idx].strip()):
+                        num_count += 1
+            if non_empty >= 3 and (num_count / non_empty) >= 0.5:
+                return True
+
+    return False
+
+
+def _extract_pdfplumber(path: str) -> list[dict]:
+    """Extração de tabelas via pdfplumber com normalização de células."""
     result: list[dict] = []
     with pdfplumber.open(path) as pdf:
         for i, page in enumerate(pdf.pages):
             for j, table in enumerate(page.extract_tables()):
                 if table:
-                    result.append({"page": i + 1, "table_index": j, "rows": table})
+                    clean_rows = [
+                        [_normalize_cell(cell) for cell in row]
+                        for row in table
+                    ]
+                    if any(any(c for c in r) for r in clean_rows):
+                        result.append({"page": i + 1, "table_index": j, "rows": clean_rows})
     return result
 
 
 def _extract_pymupdf(path: str) -> list[dict]:
     """Alta fidelidade: extração de tabelas via PyMuPDF com normalização de espaçamento.
 
-    Evita o glifo-a-glifo espaçado que o pdfplumber gera em planilhas com
-    letter-spacing largo (ex.: `3 8 , 0 0` → `38,00`) e sobreposição vertical de células.
+    Primeiro tenta detecção vetorial baseada em linhas. Se nenhuma tabela for encontrada,
+    aplica detecção baseada em texto com validação heurística para tabelas sem borda.
     """
     import pymupdf
 
@@ -176,6 +228,18 @@ def _extract_pymupdf(path: str) -> list[dict]:
                 ]
                 if rows:
                     result.append({"page": i + 1, "table_index": j, "rows": rows})
+
+        # Fallback para tabelas sem bordas (ex.: Cismetro), validando plausibilidade
+        if not result:
+            for i, page in enumerate(doc):
+                for j, table in enumerate(page.find_tables(strategy="text").tables):
+                    rows = [
+                        [_normalize_cell(cell) for cell in row]
+                        for row in table.extract()
+                    ]
+                    if rows and _is_plausible_table(rows):
+                        result.append({"page": i + 1, "table_index": j, "rows": rows})
+
     return result
 
 
@@ -219,7 +283,7 @@ def consolidate_tables(tables: list[dict]) -> list[dict]:
                 consolidated.append({
                     "page": current["page"],
                     "table_index": current["table_index"],
-                    "rows": unwrap_table_rows(current["rows"]),
+                    "rows": clean_table_financial_values(unwrap_table_rows(current["rows"])),
                 })
                 current = {
                     "page": page,
@@ -234,7 +298,7 @@ def consolidate_tables(tables: list[dict]) -> list[dict]:
         consolidated.append({
             "page": current["page"],
             "table_index": current["table_index"],
-            "rows": unwrap_table_rows(current["rows"]),
+            "rows": clean_table_financial_values(unwrap_table_rows(current["rows"])),
         })
 
     return consolidated

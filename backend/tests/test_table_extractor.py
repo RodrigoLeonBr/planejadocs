@@ -70,9 +70,12 @@ def test_pymupdf_valor_limpo_e_acento_no_pdf_real(tmp_path):
     linha = extract_tables(str(p1), engine="pymupdf")[0]["rows"][1]
     assert linha[2] == "38,00"  # valor sem glifo-a-glifo espaçado
     assert "ORIENTAÇÃO" in linha[1]  # acento preservado
-    # pdfplumber (padrão) estraga o valor nesta planilha:
+    # pdfplumber (legado) estraga o valor nesta planilha:
+    plumber = extract_tables(str(p1), engine="pdfplumber")[0]["rows"][1]
+    assert plumber[2] != "38,00"
+    # pymupdf (novo padrão) extrai limpo:
     padrao = extract_tables(str(p1))[0]["rows"][1]
-    assert padrao[2] != "38,00"
+    assert padrao[2] == "38,00"
 
 
 def test_sem_tabela_retorna_lista_vazia(native_pdf):

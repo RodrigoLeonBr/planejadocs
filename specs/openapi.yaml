@@ -53,6 +53,11 @@ paths:
                   description: >-
                     Tema para organizar a extração. Se informado, a conversão
                     é persistida em <output_dir>/<tema>/ (markdown + tabelas).
+                table_engine:
+                  type: string
+                  enum: [pymupdf, pdfplumber]
+                  default: pymupdf
+                  description: Motor de extração de tabelas (pymupdf = alta fidelidade, pdfplumber = legado)
                 output_dir:
                   type: string
                   description: >-
@@ -104,8 +109,13 @@ paths:
                   format: binary
                 format:
                   type: string
-                  enum: [json, csv, excel]
+                  enum: [json, csv, csv_ptbr, excel]
                   default: json
+                table_engine:
+                  type: string
+                  enum: [pymupdf, pdfplumber]
+                  default: pymupdf
+                  description: Motor de extração de tabelas
       responses:
         "200":
           description: Tabelas extraídas
@@ -125,7 +135,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [csv, excel]
+            enum: [csv, csv_ptbr, excel]
             default: csv
       requestBody:
         required: true

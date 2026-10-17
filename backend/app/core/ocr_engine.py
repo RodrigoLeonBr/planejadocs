@@ -47,15 +47,15 @@ def _detect_rotation(engine, page):
 def _get_engine():
     """Carrega o RapidOCR uma vez (a inicialização é cara) e reaproveita.
 
-    Modelo de reconhecimento LATIN: os docs da SMS são só português (script
-    latino). O modelo chinês padrão alucina ideogramas (口/品/中) nas células
-    de 1 char (D/F/BH/8h) das grades; o LATIN elimina isso.
+    Reconhecimento em português: os docs da SMS são só português (script
+    latino). O PP-OCRv6 (RapidOCR 3.x) não aceita mais o grupo 'latin'
+    (LangRec.LATIN), apenas códigos de idioma; usamos 'pt'.
     """
     global _engine
     if _engine is None:
-        from rapidocr import LangRec, RapidOCR
+        from rapidocr import RapidOCR
 
-        _engine = RapidOCR(params={"Rec.lang_type": LangRec.LATIN})
+        _engine = RapidOCR(params={"Rec.lang_type": "pt"})
     return _engine
 
 

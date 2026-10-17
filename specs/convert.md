@@ -34,12 +34,20 @@ Endpoint e biblioteca que convertem PDFs em Markdown estruturado, com detecção
 
 - **Imagens**: descartadas por padrão (config `write_images=false`).
 - **Tabelas**: extraídas por padrão; podem ser desativadas. Dois motores de extração selecionáveis por requisição via `table_engine`:
-  - `pdfplumber` (padrão): rápido; comportamento histórico. Preserva o texto bruto das células (inclusive quebras internas).
-  - `pymupdf` (alta fidelidade): extrai o texto de cada célula pelo seu bounding box (`page.get_textbox`) e normaliza o espaçamento (colapsa runs de espaço/quebra em um único espaço). Corrige o glifo-a-glifo espaçado que o `pdfplumber` gera em algumas planilhas (ex.: valor `3 8 , 0 0` → `38,00`; `A TIVIDADE` → `ATIVIDADE`). Recomendado quando a integridade dos valores/números importa. `table_engine` inválido → cai no padrão `pdfplumber`.
+  - `pymupdf` (padrão / alta fidelidade): extração nativa via `table.extract()` com normalização de espaçamento. Evita letter-spacing largo (ex.: `3 8 , 0 0` → `38.00`) e elimina sobreposições/duplicações verticais de células. Recomendado para máxima performance (~0.25s/pág) e fidelidade numérica/estrutural.
+  - `pdfplumber` (legado / fallback): extrai através de vetorização de linhas. Útil em PDFs com linhas de grade bem demarcadas onde PyMuPDF não identifique a grade.
+  - `table_engine` inválido → cai no padrão `pymupdf`.
+- **Consolidação Multi-Páginas**: tabelas consecutivas com o mesmo número de colunas distribuídas por múltiplas páginas (comum em relatórios e tabelas de credenciamento SMS) são unificadas automaticamente em uma única estrutura, evitando fragmentação e prevenindo que a primeira linha de dados de páginas subsequentes seja descartada como falso cabeçalho.
+- **Higienização Financeira e Numérica**: colunas identificadas como monetárias/valores (`VALOR`, `TOTAL`, etc.) passam por sanitização automática: remoção de prefixos (`R$`), eliminação de espaços intra-dígitos e formatação estrita com 2 casas decimais.
+- **Formatos de Download e Exportação**:
+  - `csv` (padrão SQL/banco): delimitador vírgula (`,`), casas decimais com ponto (`38.00`), codificação UTF-8 pura. Pronto para `LOAD DATA INFILE`, scripts Python/Pandas e Laravel.
+  - `csv_ptbr` (padrão Excel Brasil): delimitador ponto-e-vírgula (`;`), casas decimais com vírgula (`38,00`), codificação UTF-8 com BOM (`utf-8-sig`).
+  - `excel`: arquivo `.xlsx` com células numéricas tipadas como `float`, cabeçalho estilizado e painel congelado.
+  - `json`: estrutura JSON compatível com a API.
 - **OCR**: usado apenas quando o PDF é escaneado (~5% dos casos — escalas de trabalho).
 - **Chunking**: desligado por padrão; ativado por configuração.
-- **Download direto de planilha**: `POST /tables/download?format=csv|excel` recebe as tabelas já retornadas por `/convert` (corpo `{tables:[...]}`) e devolve o arquivo (`.csv` ou `.xlsx`) sem exigir tema/persistência. Corpo sem tabelas → 404. Permite baixar a planilha na tela de resultado logo após converter.
-- **Tema e persistência**: a UI sempre pede um **tema** antes de cada importação. Se `tema` for informado no `/convert`, a extração é gravada em `<PDF2MD_OUTPUT_DIR>/<tema>/` — `<arquivo>.md` mais `<arquivo>.tables.json` e `.tables.csv` quando há tabelas. Sem `tema`, nada é persistido (comportamento anterior). O nome da pasta é normalizado (minúsculas, sem acento, espaços→`_`) para evitar temas duplicados; `GET /themes` lista os temas existentes.
+- **Download direto de planilha**: `POST /tables/download?format=csv|csv_ptbr|excel` recebe as tabelas já retornadas por `/convert` (corpo `{tables:[...]}`) e devolve o arquivo sem exigir tema/persistência. Corpo sem tabelas → 404. Permite baixar a planilha na tela de resultado logo após converter.
+- **Tema e persistência**: a UI sempre pede um **tema** antes de cada importação. Se `tema` for informado no `/convert`, a extração é gravada em `<PDF2MD_OUTPUT_DIR>/<tema>/` — `<arquivo>.md` mais `<arquivo>.tables.json`, `.tables.csv`, `.tables.pt_br.csv` e `.tables.xlsx` quando há tabelas. Sem `tema`, nada é persistido. O nome da pasta é normalizado (minúsculas, sem acento, espaços→`_`); `GET /themes` lista os temas existentes.
 
 ## Erros Padronizados
 
